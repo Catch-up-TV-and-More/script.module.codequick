@@ -27,11 +27,17 @@ logger_id = re.sub("[ .]", "-", addon_data.getAddonInfo("name"))
 # Logger specific to this module
 logger = logging.getLogger("%s.support" % logger_id)
 
-# Listitem auto sort methods
-auto_sort = set()
+# Dictionary of registered delayed execution callback
+registered_delayed = []
 
-# Dictionary of registered callback routes
+# Dictionary of registered callback
 registered_routes = {}
+
+# Session data
+selector = "root"
+auto_sort = set()
+params = {}
+handle = -1
 
 
 class LoggingMap(dict):
@@ -156,150 +162,150 @@ class Callback(object):
         """
         execute_delayed = kwargs.pop("execute_delayed", False)
 
-        # Change the selector to match callback route been tested
-        # This will ensure that the plugin paths are currect
-        dispatcher.selector = self.path
+        # Ensure that all session parameters are reset before we start
+        reset_session()
 
-        # Update support params with the params
-        # that are to be passed to callback
+        # Change selector to the path of the callback been tested
+        globals()["selector"] = self.path
+
+        # Update global params with the positional args
         if args:
-            self.args_to_kwargs(args, dispatcher.params)
+            self.args_to_kwargs(args, params)
 
+        # Update global params with keyword args
         if kwargs:
-            dispatcher.params.update(kwargs)
+            params.update(kwargs)
 
-        # Instantiate the parent
+        # Instantiate the parent class
         parent_ins = self._parent()
 
         try:
-            # Now we are ready to call the callback function and return its results
+            # Now we are ready to call the callback function that we want to test
             results = self._func(parent_ins, *args, **kwargs)
+
+            # Ensure the we always have a list to work with
             if inspect.isgenerator(results):
                 results = list(results)
 
-        except Exception:
-            # This is only here to allow for
-            # the use of the finally clause
-            raise
+            # Execute Delated callback functions if any ware registered
+            if execute_delayed and registered_delayed:
+                run_delayed()
 
-        else:
-            # Execute Delated callback functions if any
-            if execute_delayed:
-                dispatcher.run_delayed()
-
+            # Now we can return the results from the callback
             return results
 
         finally:
-            # Reset global datasets
-            dispatcher.reset()
-            auto_sort.clear()
+            # Just to be sure we will reset
+            # the session parameters again
+            reset_session()
 
 
-class Dispatcher(object):
-    """Class to handle registering and dispatching of callback functions."""
+def get_callback(path=None):
+    """
+    Return the given route callback.
 
-    def __init__(self):
-        self.registered_delayed = []
-        self.callback_params = {}
-        self.selector = "root"
-        self.params = {}
-        self.handle = -1
+    :param Callback path: [opt] Path to callback
+    :rtype: Callback
+    """
+    return registered_routes[path if path else selector]
 
-    def reset(self):
-        """Reset session parameters."""
-        self.registered_delayed[:] = []
-        self.callback_params.clear()
-        kodi_logger.debug_msgs = []
-        self.selector = "root"
-        self.params.clear()
-        auto_sort.clear()
 
-    def parse_args(self):
-        """Extract arguments given by Kodi"""
-        _, _, route, raw_params, _ = urlparse.urlsplit(sys.argv[0] + sys.argv[2])
-        self.selector = route if len(route) > 1 else "root"
-        self.handle = int(sys.argv[1])
+def parse_args():
+    """
+    Extract arguments given by Kodi
 
-        if raw_params:
-            params = parse_qs(raw_params)
-            self.params.update(params)
+    :returns: Callback related params
+    :rtype: dict
+    """
+    _, _, route, raw_params, _ = urlparse.urlsplit(sys.argv[0] + sys.argv[2])
+    globals()["selector"] = route if len(route) > 1 else "root"
+    globals()["handle"] = int(sys.argv[1])
 
-            # Unpickle pickled data
-            if "_pickle_" in params:
-                unpickled = pickle.loads(binascii.unhexlify(self.params.pop("_pickle_")))
-                self.params.update(unpickled)
+    logger.debug("Dispatching to route: '%s'", selector)
 
-            # Construct a separate dictionary for callback specific parameters
-            self.callback_params = {key: value for key, value in self.params.items()
-                                    if not (key.startswith(u"_") and key.endswith(u"_"))}
+    if raw_params:
+        current_params = parse_qs(raw_params)
+        params.update(current_params)
 
-    def get_route(self, path=None):  # type: (str) -> Callback
-        """Return the given route object."""
-        return registered_routes[path if path else self.selector]
+        # Unpickle pickled data
+        if "_pickle_" in params:
+            unpickled = pickle.loads(binascii.unhexlify(params.pop("_pickle_")))
+            params.update(unpickled)
 
-    def register_delayed(self, func, args, kwargs):
-        """Register a function that will be called later, after content has been listed."""
-        callback = (func, args, kwargs)
-        self.registered_delayed.append(callback)
+    # Construct a separate dictionary for callback specific parameters
+    return {key: value for key, value in params.items() if not (key.startswith(u"_") and key.endswith(u"_"))}
 
-    def run_callback(self):
-        """
-        The starting point of the add-on.
 
-        This function will handle the execution of the "callback" functions.
-        The callback function that will be executed, will be auto selected.
+def run():
+    """
+    The starting point of the add-on.
 
-        The "root" callback, is the callback that will be the initial
-        starting point for the add-on.
-        """
-        self.reset()
-        self.parse_args()
-        logger.debug("Dispatching to route: '%s'", self.selector)
-        logger.debug("Callback parameters: '%s'", self.callback_params)
+    This function will handle the execution of "callback" functions.
+    The callback function that will be executed, will be auto selected.
 
+    The "root" callback, is the callback that will be the initial
+    starting point for the add-on.
+    """
+    # Reset Session data
+    reset_session()
+
+    # Fetch params pass in by kodi
+    callback_params = parse_args()
+    logger.debug("Callback parameters: '%s'", callback_params)
+
+    try:
+        # Fetch the controling class and callback function/method
+        route = get_callback()
+        execute_time = time.time()
+
+        # Execute callback
+        route.execute(callback_params)
+
+    except Exception as e:
         try:
-            # Fetch the controling class and callback function/method
-            route = self.get_route()
-            execute_time = time.time()
+            msg = str(e)
+        except UnicodeEncodeError:
+            # This is python 2 only code
+            # We only use unicode to fetch message when we
+            # know that we are dealing with unicode data
+            msg = unicode_type(e).encode("utf8")
 
-            # Execute callback
-            route.execute(self.callback_params)
+        # Log the error in both the gui and the kodi log file
+        dialog = xbmcgui.Dialog()
+        dialog.notification(e.__class__.__name__, msg, addon_data.getAddonInfo("icon"))
+        logger.critical(msg, exc_info=1)
 
-        except Exception as e:
+    else:
+        logger.debug("Route Execution Time: %ims", (time.time() - execute_time) * 1000)
+        run_delayed()
+
+
+def run_delayed():
+    """Execute all delayed callbacks, if any."""
+    if registered_delayed:
+        # Time before executing callbacks
+        start_time = time.time()
+
+        # Execute in order of last in first out (LIFO).
+        while registered_delayed:
+            func, args, kwargs = registered_delayed.pop()
+
             try:
-                msg = str(e)
-            except UnicodeEncodeError:
-                # This is python 2 only code
-                # We only use unicode to fetch message when we
-                # know that we are dealing with unicode data
-                msg = unicode_type(e).encode("utf8")
+                func(*args, **kwargs)
+            except Exception as e:
+                logger.exception(str(e))
 
-            # Log the error in both the gui and the kodi log file
-            dialog = xbmcgui.Dialog()
-            dialog.notification(e.__class__.__name__, msg, addon_data.getAddonInfo("icon"))
-            logger.critical(msg, exc_info=1)
+        # Log execution time of callbacks
+        logger.debug("Callbacks Execution Time: %ims", (time.time() - start_time) * 1000)
 
-        else:
-            logger.debug("Route Execution Time: %ims", (time.time() - execute_time) * 1000)
-            self.run_delayed()
 
-    def run_delayed(self):
-        """Execute all delayed callbacks, if any."""
-        if self.registered_delayed:
-            # Time before executing callbacks
-            start_time = time.time()
-
-            # Execute in order of last in first out (LIFO).
-            while self.registered_delayed:
-                func, args, kwargs = self.registered_delayed.pop()
-
-                try:
-                    func(*args, **kwargs)
-                except Exception as e:
-                    logger.exception(str(e))
-
-            # Log execution time of callbacks
-            logger.debug("Callbacks Execution Time: %ims", (time.time() - start_time) * 1000)
+def reset_session():
+    """Reset Session data, required when setting reuselanguageinvoker to true"""
+    globals()["selector"] = "root"
+    kodi_logger.debug_msgs = []
+    registered_delayed[:] = []
+    auto_sort.clear()
+    params.clear()
 
 
 def build_path(callback=None, args=None, query=None, **extra_query):
@@ -316,7 +322,7 @@ def build_path(callback=None, args=None, query=None, **extra_query):
     """
     # Set callback to current callback if not given
     if callback is None:
-        callback = dispatcher.get_route()
+        callback = get_callback()
 
     # Convert args to keyword args if required
     if args:
@@ -325,7 +331,7 @@ def build_path(callback=None, args=None, query=None, **extra_query):
     # If extra querys are given then append the
     # extra querys to the current set of querys
     if extra_query:
-        query = dispatcher.params.copy()
+        query = params.copy()
         query.update(extra_query)
 
     # Encode the query parameters using json
@@ -343,7 +349,3 @@ base_logger = logging.getLogger()
 base_logger.addHandler(kodi_logger)
 base_logger.setLevel(logging.DEBUG)
 base_logger.propagate = False
-
-# Dispatcher to manage route callbacks
-dispatcher = Dispatcher()
-run = dispatcher.run_callback

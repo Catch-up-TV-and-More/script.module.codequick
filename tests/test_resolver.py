@@ -1,14 +1,12 @@
 import unittest
-import urlquick
 import sys
 
 from addondev.testing import plugin_data, mock_select_dialog
-from xbmcgui import ListItem as kodi_listitem
+from xbmcgui import ListItem as kodi_Listitem
 import xbmc
 
-from codequick import resolver
-from codequick.listing import Listitem as custom_listitem
-from codequick.support import dispatcher, registered_routes
+from codequick import resolver, support
+from codequick.listing import Listitem as custom_Listitem
 
 from . import YDStreamExtractor
 sys.modules["YDStreamExtractor"] = YDStreamExtractor
@@ -24,7 +22,7 @@ def temp_callback(func):
         try:
             func(*args)
         finally:
-            del registered_routes[root.path]
+            del support.registered_routes[root.path]
 
     return wrapper
 
@@ -66,7 +64,7 @@ class TestResolver(unittest.TestCase):
             self.resolver._process_results(9)
 
     def test_kodi_listitem(self):
-        item = kodi_listitem()
+        item = kodi_Listitem()
         item.setLabel("test")
         item.setPath(u"test.mkv")
 
@@ -75,7 +73,7 @@ class TestResolver(unittest.TestCase):
         self.assertEqual(plugin_data["resolved"]["path"], u"test.mkv")
 
     def test_custom_listitem(self):
-        item = custom_listitem()
+        item = custom_Listitem()
         item.label = "test"
         item.set_callback(u"test.mkv")
 
@@ -158,7 +156,7 @@ class TestResolver(unittest.TestCase):
             yield "test_two.mkv"
 
         self.resolver._process_results(eg_resolver())
-        dispatcher.run_delayed()
+        support.run_delayed()
         self.assertTrue(plugin_data["succeeded"])
         self.assertEqual(plugin_data["resolved"]["path"], u"test_one.mkv")
         self.assertEqual(1, len(plugin_data["playlist"]))
@@ -171,7 +169,7 @@ class TestResolver(unittest.TestCase):
             yield "test_two.mkv"
 
         self.resolver._process_results(eg_resolver())
-        dispatcher.run_delayed()
+        support.run_delayed()
         self.assertTrue(plugin_data["succeeded"])
         self.assertEqual(plugin_data["resolved"]["path"], u"test_one.mkv")
         self.assertEqual(1, len(plugin_data["playlist"]))
@@ -179,7 +177,7 @@ class TestResolver(unittest.TestCase):
     def test_playlist_kodi_listitem(self):
         del plugin_data["playlist"][:]
 
-        item = kodi_listitem()
+        item = kodi_Listitem()
         item.setLabel("test")
         item.setPath(u"test.mkv")
 
@@ -190,7 +188,7 @@ class TestResolver(unittest.TestCase):
     def test_playlist_custom_listitem(self):
         del plugin_data["playlist"][:]
 
-        item = custom_listitem()
+        item = custom_Listitem()
         item.label = "test"
         item.set_callback(u"test.mkv")
 

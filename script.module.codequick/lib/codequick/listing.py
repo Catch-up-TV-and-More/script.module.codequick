@@ -12,8 +12,8 @@ import xbmcplugin
 import xbmcgui
 
 # Package imports
+from codequick import support
 from codequick.script import Script
-from codequick.support import auto_sort, build_path, logger_id, dispatcher, Callback
 from codequick.utils import ensure_unicode, ensure_native_str, unicode_type, PY3, bold
 
 if PY3:
@@ -26,7 +26,7 @@ else:
 __all__ = ["Listitem"]
 
 # Logger specific to this module
-logger = logging.getLogger("%s.listitem" % logger_id)
+logger = logging.getLogger("%s.listitem" % support.logger_id)
 
 # Listitem thumbnail locations
 local_image = ensure_native_str(os.path.join(Script.get_info("path"), u"resources", u"media", u"{}"))
@@ -75,7 +75,7 @@ infolable_map = {"artist": (None, xbmcplugin.SORT_METHOD_ARTIST_IGNORE_THE),
                  "dbid": (int, None)}
 
 # Convenient function for adding to autosort set
-auto_sort_add = auto_sort.add
+auto_sort_add = support.auto_sort.add
 
 # Map quality values to it's related video resolution, used by 'strea.hd'
 quality_map = ((768, 576), (1280, 720), (1920, 1080), (3840, 2160))  # SD, 720p, 1080p, 4K
@@ -471,7 +471,7 @@ class Context(list):
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
         """
         # Add '_updatelisting_ = True' to callback params if called from the same callback as is given here
-        if callback == dispatcher.get_route():
+        if callback == support.get_callback():
             kwargs["_updatelisting_"] = True
 
         related_videos_text = Script.localize(RELATED_VIDEOS)
@@ -490,7 +490,7 @@ class Context(list):
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
         """
-        command = "XBMC.Container.Update(%s)" % build_path(callback, args, kwargs)
+        command = "XBMC.Container.Update(%s)" % support.build_path(callback, args, kwargs)
         self.append((label, command))
 
     def script(self, callback, label, *args, **kwargs):
@@ -503,7 +503,7 @@ class Context(list):
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
         """
-        command = "XBMC.RunPlugin(%s)" % build_path(callback, args, kwargs)
+        command = "XBMC.RunPlugin(%s)" % support.build_path(callback, args, kwargs)
         self.append((label, command))
 
     def _close(self):
@@ -616,10 +616,10 @@ class Listitem(object):
     def _close(self):
         callback = self.path
         listitem = self.listitem
-        if isinstance(callback, Callback):
+        if isinstance(callback, support.Callback):
             listitem.setProperty("isplayable", str(callback.is_playable).lower())
             listitem.setProperty("folder", str(callback.is_folder).lower())
-            path = build_path(callback, self._args, self.params.raw_dict)
+            path = support.build_path(callback, self._args, self.params.raw_dict)
             isfolder = callback.is_folder
         else:
             listitem.setProperty("isplayable", "true" if callback else "false")
@@ -719,13 +719,13 @@ class Listitem(object):
             >>> item.next_page(url="http://example.com/videos?page2")
         """
         # Current running callback
-        callback = dispatcher.get_route()
+        callback = support.get_callback()
         callback = kwargs.pop("callback", callback)
 
         # Add support params to callback params
-        kwargs["_updatelisting_"] = True if u"_nextpagecount_" in dispatcher.params else False
-        kwargs["_title_"] = dispatcher.params.get(u"_title_", u"")
-        kwargs["_nextpagecount_"] = dispatcher.params.get(u"_nextpagecount_", 1) + 1
+        kwargs["_updatelisting_"] = True if u"_nextpagecount_" in support.params else False
+        kwargs["_title_"] = support.params.get(u"_title_", u"")
+        kwargs["_nextpagecount_"] = support.params.get(u"_nextpagecount_", 1) + 1
 
         # Create listitem instance
         item = cls()

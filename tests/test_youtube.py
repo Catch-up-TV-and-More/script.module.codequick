@@ -3,8 +3,7 @@ import sqlite3
 import xbmc
 import os
 
-from codequick import youtube
-from codequick.support import dispatcher
+from codequick import youtube, support
 
 
 def clean_cache():
@@ -89,7 +88,7 @@ class TestAPIControl(unittest.TestCase):
         except sqlite3.ProgrammingError:
             pass
         self.api = None
-        dispatcher.reset()
+        support.reset_session()
 
     def test_valid_playlistid(self):
         ret = self.api.valid_playlistid("UCaWd5_7JhbQBe4dknZhsHJg")
@@ -129,7 +128,7 @@ class TestDB(unittest.TestCase):
         except sqlite3.ProgrammingError:
             pass
         self.db = None
-        dispatcher.reset()
+        support.reset_session()
 
     def test_close(self):
         self.db.close()

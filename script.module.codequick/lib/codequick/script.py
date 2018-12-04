@@ -11,13 +11,13 @@ import xbmcgui
 import xbmc
 
 # Package imports
+from codequick import support
 from codequick.utils import ensure_unicode, ensure_native_str, unicode_type, string_map
-from codequick.support import dispatcher, script_data, addon_data, logger_id, Callback
-
-__all__ = ["Script", "Settings"]
 
 # Logger used by the addons
-addon_logger = logging.getLogger(logger_id)
+addon_logger = logging.getLogger(support.logger_id)
+
+__all__ = ["Script", "Settings"]
 
 
 class Settings(object):
@@ -32,7 +32,7 @@ class Settings(object):
         :return: Setting as a "unicode string".
         :rtype: str
         """
-        return addon_data.getSetting(key)
+        return support.addon_data.getSetting(key)
 
     def __setitem__(self, key, value):
         """
@@ -42,11 +42,11 @@ class Settings(object):
         :param str value: Value of the setting.
         """
         # noinspection PyTypeChecker
-        addon_data.setSetting(key, ensure_unicode(value))
+        support.addon_data.setSetting(key, ensure_unicode(value))
 
     def __delitem__(self, key):  # type: (str) -> None
         """Set an add-on setting to a blank string."""
-        addon_data.setSetting(key, "")
+        support.addon_data.setSetting(key, "")
 
     @staticmethod
     def get_string(key, addon_id=None):
@@ -64,7 +64,7 @@ class Settings(object):
         if addon_id:
             return xbmcaddon.Addon(addon_id).getSetting(key)
         else:
-            return addon_data.getSetting(key)
+            return support.addon_data.getSetting(key)
 
     @staticmethod
     def get_boolean(key, addon_id=None):
@@ -153,11 +153,11 @@ class Script(object):
     logger = addon_logger
 
     #: Dictionary of all callback parameters, for advanced use.
-    params = dispatcher.params
+    params = support.params
 
     def __init__(self):
         self._title = self.params.get(u"_title_", u"")
-        self.handle = dispatcher.handle
+        self.handle = support.handle
 
     @classmethod
     def register(cls, func):
@@ -168,7 +168,7 @@ class Script(object):
         :returns: A callback instance.
         :rtype: Callback
         """
-        return Callback(func, parent=cls)
+        return support.Callback(func, parent=cls)
 
     @staticmethod
     def register_delayed(func, *args, **kwargs):
@@ -185,7 +185,8 @@ class Script(object):
         :param args: "Positional" arguments that will be passed to function.
         :param kwargs: "Keyword" arguments that will be passed to function.
         """
-        dispatcher.register_delayed(func, args, kwargs)
+        callback = (func, args, kwargs)
+        support.registered_delayed.append(callback)
 
     @staticmethod
     def log(msg, args=None, lvl=10):
@@ -270,12 +271,12 @@ class Script(object):
             except KeyError:
                 raise KeyError("no localization found for string id '%s'" % string_id)
             else:
-                return addon_data.getLocalizedString(numeric_id)
+                return support.addon_data.getLocalizedString(numeric_id)
 
         elif 30000 <= string_id <= 30999:
-            return addon_data.getLocalizedString(string_id)
+            return support.addon_data.getLocalizedString(string_id)
         elif 32000 <= string_id <= 32999:
-            return script_data.getLocalizedString(string_id)
+            return support.script_data.getLocalizedString(string_id)
         else:
             return xbmc.getLocalizedString(string_id)
 
@@ -313,10 +314,10 @@ class Script(object):
             resp = xbmcaddon.Addon(addon_id).getAddonInfo(key)
         elif key == "path_global" or key == "profile_global":
             # Extract property from codequick addon
-            resp = script_data.getAddonInfo(key[:key.find("_")])
+            resp = support.script_data.getAddonInfo(key[:key.find("_")])
         else:
             # Extract property from the running addon
-            resp = addon_data.getAddonInfo(key)
+            resp = support.addon_data.getAddonInfo(key)
 
         # Check if path needs to be translated first
         if resp[:10] == "special://":  # pragma: no cover

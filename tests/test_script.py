@@ -1,7 +1,7 @@
 from addondev.testing import data_log
 import unittest
 
-from codequick import script
+from codequick import script, support
 
 
 class Addon(object):
@@ -40,7 +40,7 @@ class MockLogger(object):
 
 class Settings(unittest.TestCase):
     def setUp(self):
-        self.org_addon_data = script.addon_data
+        self.org_addon_data = support.addon_data
         self.org_xbmcaddon = script.xbmcaddon.Addon
 
         script.addon_data = Addon()
@@ -52,20 +52,16 @@ class Settings(unittest.TestCase):
         script.addon_data = self.org_addon_data
         script.xbmcaddon.Addon = self.org_xbmcaddon
 
-    def test_getter(self):
+    def test_getter_setter(self):
+        self.settings["tester"] = "testdata"
         string = self.settings["tester"]
-        self.assertEqual(string, "testdata")
-
-    def test_setter(self):
-        self.settings["tester"] = "newdata"
-        string = self.settings["tester"]
-        self.assertEqual(string, "newdata")
+        self.assertEqual("testdata", string)
 
     def test_deleter(self):
         self.settings["tester"] = "newdata"
         del self.settings["tester"]
         string = self.settings["tester"]
-        self.assertEqual(string, "")
+        self.assertEqual("", string)
 
     def test_get_string(self):
         self.settings["tester"] = "newdata"
@@ -116,12 +112,12 @@ class Script(unittest.TestCase):
     def setUp(self):
         self.script = script.Script()
 
-    def test_register_metacall(self):
+    def test_register_delayed(self):
         def tester():
             pass
 
         self.script.register_delayed(tester)
-        for callback, _, _ in script.dispatcher.registered_delayed:
+        for callback, _, _ in support.registered_delayed:
             if callback is tester:
                 self.assertTrue(True, "")
                 break

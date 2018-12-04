@@ -6,8 +6,8 @@ from hashlib import sha1
 import pickle
 
 # Package imports
+from codequick import support
 from codequick.storage import PersistentDict
-from codequick.support import dispatcher
 from codequick.listing import Listitem
 from codequick.utils import keyboard, ensure_unicode
 from codequick.route import Route, validate_listitems
@@ -79,10 +79,10 @@ def redirect_search(searchdb, plugin, search_term, extras):
 
     # We switch selector to redirected callback to allow next page to work properly
     route = callback_params.pop("_route")
-    dispatcher.selector = route
+    support.selector = route
 
     # Fetch search results from callback
-    func = dispatcher.get_route()
+    func = support.get_callback()
     listitems = func(plugin, **callback_params)
 
     # Check that we have valid listitems
@@ -120,7 +120,7 @@ def list_terms(searchdb, plugin, extras):
     # Set the callback function to the route that was given
     callback_params = extras.copy()
     route = callback_params.pop("_route")
-    callback = dispatcher.get_route(route)
+    callback = support.get_callback(route)
 
     # Prefetch the localized string for the context menu lable
     str_remove = plugin.localize(REMOVE)

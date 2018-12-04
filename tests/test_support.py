@@ -84,76 +84,47 @@ class TestRoute(unittest.TestCase):
 
 
 class TestDispatcher(unittest.TestCase):
-    def setUp(self):
-        self.dispatcher = support.Dispatcher()
-
     def test_reset(self):
-        self.dispatcher.selector = "test"
-        self.dispatcher.params["tester"] = True
-        self.dispatcher.registered_delayed.append("test")
+        support.selector = "test"
+        support.params["tester"] = True
+        support.registered_delayed.append("test")
 
-        self.dispatcher.reset()
-        self.assertEqual(self.dispatcher.selector, "root")
-        self.assertListEqual(self.dispatcher.registered_delayed, [])
-        self.assertDictEqual(self.dispatcher.params, dict())
+        support.reset_session()
+        self.assertEqual(support.selector, "root")
+        self.assertListEqual(support.registered_delayed, [])
+        self.assertDictEqual(support.params, dict())
 
     def test_parse_sysargs(self):
-        dispatcher = support.Dispatcher()
-        with mock_argv(["plugin://script.module.codequick/test/tester", 96, ""]):
-            dispatcher.parse_args()
+        with mock_argv(["plugin://script.module.codequick/test/tester/", 96, ""]):
+            support.parse_args()
 
-        self.assertEqual(dispatcher.selector, "/test/tester")
+        self.assertEqual("/test/tester/", support.selector)
 
     def test_parse_sysargs_with_args(self):
-        dispatcher = support.Dispatcher()
-        with mock_argv(["plugin://script.module.codequick/test/tester", 96,
+        with mock_argv(["plugin://script.module.codequick/test/tester/", 96,
                         "?testdata=true&worker=false&_title_=test"]):
-            dispatcher.parse_args()
+            support.parse_args()
 
-        self.assertEqual(dispatcher.selector, "/test/tester")
-        self.assertDictContainsSubset({"testdata": "true", "worker": "false", "_title_": "test"}, dispatcher.params)
-        self.assertDictContainsSubset({"testdata": "true", "worker": "false"}, dispatcher.callback_params)
+        self.assertEqual(support.selector, "/test/tester/")
+        self.assertDictContainsSubset({"testdata": "true", "worker": "false", "_title_": "test"}, support.params)
 
     @unittest.skipIf(PY3, "The pickled string is specific to python 2")
     def test_parse_params_pickle_py2(self):
-        dispatcher = support.Dispatcher()
-        with mock_argv(["plugin://script.module.codequick/test/tester", 96,
+        with mock_argv(["plugin://script.module.codequick/test/tester/", 96,
                         "?_pickle_=80027d7100285506776f726b65727101895508746573746461746171028855075f7469746c655f710355"
                         "04746573747104752e"]):
-            dispatcher.parse_args()
+            support.parse_args()
 
-        self.assertDictContainsSubset({"testdata": True, "worker": False, "_title_": "test"}, dispatcher.params)
-        self.assertDictContainsSubset({"testdata": True, "worker": False}, dispatcher.callback_params)
+        self.assertDictContainsSubset({"testdata": True, "worker": False, "_title_": "test"}, support.params)
 
     @unittest.skipUnless(PY3, "The pickled string is specific to python 3")
     def test_parse_params_pickle_py3(self):
-        dispatcher = support.Dispatcher()
-        with mock_argv(["plugin://script.module.codequick/test/tester", 96,
+        with mock_argv(["plugin://script.module.codequick/test/tester/", 96,
                         "?_pickle_=8004952c000000000000007d94288c08746573746461746194888c06776f726b657294898c075f74697"
                         "46c655f948c047465737494752e"]):
-            dispatcher.parse_args()
+            support.parse_args()
 
-        self.assertDictContainsSubset({"testdata": True, "worker": False, "_title_": "test"}, dispatcher.params)
-        self.assertDictContainsSubset({"testdata": True, "worker": False}, dispatcher.callback_params)
-
-    def test_register_metacall(self):
-        def root():
-            pass
-
-        self.dispatcher.register_delayed(root, [], {})
-        self.assertListEqual(self.dispatcher.registered_delayed, [(root, [], {})])
-
-    def test_metacalls(self):
-        class Executed(object):
-            yes = False
-
-        def root():
-            Executed.yes = True
-            raise RuntimeError("should not be raised")
-
-        self.dispatcher.register_delayed(root, [], {})
-        self.dispatcher.run_delayed()
-        self.assertTrue(Executed.yes)
+        self.assertDictContainsSubset({"testdata": True, "worker": False, "_title_": "test"}, support.params)
 
     def test_register_root(self):
         def root():
@@ -190,7 +161,7 @@ class TestDispatcher(unittest.TestCase):
 
         support.Callback(root, route.Route)
         with mock_argv(["plugin://script.module.codequick", 96, ""]):
-            self.dispatcher.run_callback()
+            support.run()
 
         self.assertTrue(Executed.yes)
 
@@ -203,7 +174,7 @@ class TestDispatcher(unittest.TestCase):
             return False
 
         support.Callback(root, script.Script)
-        self.dispatcher.run_callback()
+        support.run()
         self.assertTrue(Executed.yes)
 
     def test_dispatch_fail(self):
@@ -217,7 +188,7 @@ class TestDispatcher(unittest.TestCase):
 
         support.Callback(root, route.Route)
         with mock_argv(["plugin://script.module.codequick", 96, ""]):
-            self.dispatcher.run_callback()
+            support.run()
 
         self.assertTrue(Executed.yes)
 
@@ -232,7 +203,7 @@ class TestDispatcher(unittest.TestCase):
 
         support.Callback(root, route.Route)
         with mock_argv(["plugin://script.module.codequick", 96, ""]):
-            self.dispatcher.run_callback()
+            support.run()
 
         self.assertTrue(Executed.yes)
 
@@ -247,7 +218,7 @@ class BuildPath(unittest.TestCase):
         self.callback = root
 
     def tearDown(self):
-        support.dispatcher.reset()
+        support.reset_session()
         del support.registered_routes["root"]
 
     def test_build_path_no_args(self):
@@ -272,22 +243,22 @@ class BuildPath(unittest.TestCase):
 
     @unittest.skipIf(PY3, "The pickled string is specific to python 2")
     def test_build_path_extra_args_py2(self):
-        support.dispatcher.params["_title_"] = "video"
+        support.params["_title_"] = "video"
         try:
             ret = support.build_path(self.callback, testdata="data")
             self.assertEqual("plugin://script.module.codequick/root?_pickle_="
                              "80027d71002855075f7469746c655f71015505766964656f71"
                              "025508746573746461746171035504646174617104752e", ret)
         finally:
-            del support.dispatcher.params["_title_"]
+            del support.params["_title_"]
 
     @unittest.skipUnless(PY3, "The pickled string is specific to python 2")
     def test_build_path_extra_args_py3(self):
-        support.dispatcher.params["_title_"] = "video"
+        support.params["_title_"] = "video"
         try:
             ret = support.build_path(self.callback, testdata="data")
             self.assertEqual("plugin://script.module.codequick/root?_pickle_="
                              "80049529000000000000007d94288c075f7469746c655f948c"
                              "05766964656f948c087465737464617461948c046461746194752e", ret)
         finally:
-            del support.dispatcher.params["_title_"]
+            del support.params["_title_"]
