@@ -482,9 +482,11 @@ class Context(list):
         """
         Convenient method to add a context menu item that links to a "container".
 
-        :type label: str
         :param Callback callback: The function that will be called when menu item is activated.
+
         :param label: The label of the context menu item.
+        :type label: str
+
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
         """
@@ -662,9 +664,11 @@ class Listitem(object):
 
         This method will create and populate a listitem from a set of given values.
 
-        :type label: str
-        :param callback: The "callback" function or playable URL.
+        :param Callback callback: The "callback" function or playable URL.
+
         :param label: The listitem's label.
+        :type label: str
+
         :param dict art: Dictionary of listitem art.
         :param dict info: Dictionary of infoLabels.
         :param dict stream: Dictionary of stream details.

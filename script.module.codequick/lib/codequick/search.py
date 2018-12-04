@@ -43,11 +43,11 @@ class Search(object):
     def __nonzero__(self):
         return bool(self.data)
 
-    def remove(self, item):
+    def remove(self, item):  # type: (str) -> None
         self.data.remove(item)
         self.db.flush()
 
-    def append(self, item):
+    def append(self, item):  # type: (str) -> None
         self.data.append(item)
         self.db.flush()
 
@@ -142,17 +142,17 @@ def list_terms(searchdb, plugin, extras):
 @Route.register
 def saved_searches(plugin, remove_entry=None, search=False, first_load=False, **extras):
     """
-    Class used to list all saved searches for the addon that called it.
+    Callback used to list all saved searches for the addon that called it.
 
-    Useful to add search support to addon that will also keep track of previous searches.
+    Useful to add search support to addon and will also keep track of previous searches.
     Also contains option via context menu to remove old search terms.
 
-    :param plugin:
-    :param remove_entry:
-    :param search:
-    :param first_load:
-    :param extras:
-    :return:
+    :param Route plugin: Tools related to Route callbacks.
+    :param remove_entry: [opt] Search term to remove from history.
+    :param search: [opt] When set to True the search input box will appear.
+    :param first_load: Only True when callback is called for the first time, allowes for search box to appear on load.
+    :param extras: Any extra params to farward on to the next callback
+    :returns: A list of search terms or the search results if loaded for the first time.
     """
     searchdb = Search(plugin, extras)
 
