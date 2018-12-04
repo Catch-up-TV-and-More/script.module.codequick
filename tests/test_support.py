@@ -64,15 +64,15 @@ class TestRoute(unittest.TestCase):
         self.assertDictEqual(kwargs, {"one": "True", "two": False})
 
     def test_unittest_caller(self):
-        ret = self.route.unittest_caller("one", two="two", return_data=True)
+        ret = self.route.test("one", two="two", return_data=True)
         self.assertTrue(ret)
 
     def test_unittest_caller_list(self):
-        ret = self.route.unittest_caller("one", two="two", return_data=["data"])
+        ret = self.route.test("one", two="two", return_data=["data"])
         self.assertListEqual(ret, ["data"])
 
     def test_unittest_caller_no_args(self):
-        ret = self.route.unittest_caller()
+        ret = self.route.test()
         self.assertIsNone(ret, ["data"])
 
     def test_unittest_caller_error(self):
@@ -83,7 +83,7 @@ class TestRoute(unittest.TestCase):
         route_obj = support.Route(test_callback, route.Route, path)
 
         with self.assertRaises(RuntimeError):
-            route_obj.unittest_caller()
+            route_obj.test()
 
 
 class TestDispatcher(unittest.TestCase):
@@ -164,7 +164,7 @@ class TestDispatcher(unittest.TestCase):
 
         callback = self.dispatcher.register_callback(root, route.Route)
         self.assertIn("root", self.dispatcher.registered_routes)
-        self.assertIsInstance(callback.route, support.Route)
+        self.assertIsInstance(callback, support.Route)
         self.assertTrue(inspect.ismethod(callback.test))
 
     def test_register_non_root(self):
@@ -173,25 +173,8 @@ class TestDispatcher(unittest.TestCase):
 
         callback = self.dispatcher.register_callback(listing, route.Route)
         self.assertIn("/tests/test_support/listing/", self.dispatcher.registered_routes)
-        self.assertIsInstance(callback.route, support.Route)
+        self.assertIsInstance(callback, support.Route)
         self.assertTrue(inspect.ismethod(callback.test))
-
-    def test_register_class(self):
-        class Videos(route.Route):
-            def run(self):
-                pass
-
-        callback = self.dispatcher.register_callback(Videos, route.Route)
-        self.assertIn("/tests/test_support/videos/", self.dispatcher.registered_routes)
-        self.assertIsInstance(callback.route, support.Route)
-        self.assertTrue(inspect.ismethod(callback.test))
-
-    def test_register_class_missing_run(self):
-        class Videos(route.Route):
-            pass
-
-        with self.assertRaises(NameError):
-            self.dispatcher.register_callback(Videos, route.Route)
 
     def test_register_duplicate(self):
         def root():

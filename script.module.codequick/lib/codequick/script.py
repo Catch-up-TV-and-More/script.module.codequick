@@ -164,7 +164,7 @@ class Script(object):
         """
         Decorator used to register callback functions.
 
-        :param callback: The callback function to register.
+        :param Route callback: The callback function to register.
         :returns: The original callback function.
         """
         return dispatcher.register_callback(callback, parent=cls)

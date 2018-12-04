@@ -24,7 +24,7 @@ def temp_callback(func):
         try:
             func(*args)
         finally:
-            del dispatcher.registered_routes[root.route.path]
+            del dispatcher.registered_routes[root.path]
 
     return wrapper
 

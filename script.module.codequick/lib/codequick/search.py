@@ -23,8 +23,6 @@ SEARCH_DB = u"_new_searches.pickle"
 
 class Search(object):
     def __init__(self, plugin, extra_params):
-        self.plugin = plugin
-
         # The saved search persistent storage
         self.db = search_db = PersistentDict(SEARCH_DB)
         plugin.register_delayed(search_db.close)
@@ -47,7 +45,6 @@ class Search(object):
 
     def remove(self, item):
         self.data.remove(item)
-        self.plugin.update_listing = True
         self.db.flush()
 
     def append(self, item):
@@ -85,7 +82,7 @@ def redirect_search(searchdb, plugin, search_term, extras):
     dispatcher.selector = route
 
     # Fetch search results from callback
-    func = dispatcher.get_route().function
+    func = dispatcher.get_route()
     listitems = func(plugin, **callback_params)
 
     # Check that we have valid listitems
@@ -162,6 +159,7 @@ def saved_searches(plugin, remove_entry=None, search=False, first_load=False, **
     # Remove search term from saved searches
     if remove_entry and remove_entry in searchdb:
         searchdb.remove(remove_entry)
+        plugin.update_listing = True
 
     # Show search dialog if search argument is True, or if there is no search term saved
     # First load is used to only allow auto search to work when first loading the saved search container.

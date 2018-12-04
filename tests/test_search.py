@@ -44,7 +44,7 @@ class Search(unittest.TestCase):
             yield Listitem.from_dict(results, "listitem one")
             yield Listitem.from_dict(results, "listitem two")
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with testing.mock_keyboard("Rock"):
@@ -64,7 +64,7 @@ class Search(unittest.TestCase):
             self.assertEqual(search_query, "Rock")
             return False
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with testing.mock_keyboard("Rock"):
@@ -82,7 +82,7 @@ class Search(unittest.TestCase):
         def results(_, search_query):
             pass
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with testing.mock_keyboard(""):
@@ -101,7 +101,7 @@ class Search(unittest.TestCase):
             yield Listitem.from_dict(results, "listitem one")
             yield Listitem.from_dict(results, "listitem two")
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with testing.mock_keyboard("Rock"):
@@ -122,7 +122,7 @@ class Search(unittest.TestCase):
             yield Listitem.from_dict(results, "listitem one")
             yield Listitem.from_dict(results, "listitem two")
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with storage.PersistentDict(search.SEARCH_DB) as db:
@@ -148,7 +148,7 @@ class Search(unittest.TestCase):
         def results(_, search_query):
             pass
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with storage.PersistentDict(search.SEARCH_DB) as db:
@@ -173,7 +173,7 @@ class Search(unittest.TestCase):
         def results(_, search_query):
             pass
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with storage.PersistentDict(search.SEARCH_DB) as db:
@@ -209,10 +209,10 @@ class Search(unittest.TestCase):
             yield Listitem.from_dict(session_two, "listitem one")
             yield Listitem.from_dict(session_two, "listitem two")
 
-        session_one_params = dict(_route=session_one.route.path)
+        session_one_params = dict(_route=session_one.path)
         session_one_id = hash_params(session_one_params)
 
-        session_two_params = dict(_route=session_two.route.path)
+        session_two_params = dict(_route=session_two.path)
         session_two_id = hash_params(session_two_params)
 
         with storage.PersistentDict(search.SEARCH_DB) as db:
@@ -243,7 +243,7 @@ class Search(unittest.TestCase):
         def results(_, search_query):
             pass
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with storage.PersistentDict(search.SEARCH_DB) as db:
@@ -271,7 +271,7 @@ class Search(unittest.TestCase):
         def results(_, search_query):
             pass
 
-        params = dict(_route=results.route.path)
+        params = dict(_route=results.path)
         session_id = hash_params(params)
 
         with storage.PersistentDict(search.SEARCH_DB) as db:

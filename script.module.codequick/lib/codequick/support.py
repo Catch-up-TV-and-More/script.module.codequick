@@ -92,35 +92,32 @@ class Route(object):
 
     :ivar bool is_playable: True if callback is playable, else False.
     :ivar bool is_folder: True if callback is a folder, else False.
-    :ivar callback: The decorated func/class.
-    :ivar callback: The callable callback function.
+    :ivar function callback: The decorated function.
     :ivar parent: The parent class that will handle the response from callback.
-    :ivar str path: The route path to func/class.
+    :ivar str path: The route path to function.
     """
-    __slots__ = ("parent", "function", "callback", "path", "is_playable", "is_folder")
+    __slots__ = ("parent", "callback", "path", "is_playable", "is_folder")
 
     def __eq__(self, other):
         return self.path == other.path
 
     def __init__(self, callback, parent, path):
-        # Register a class callback
-        if inspect.isclass(callback):
-            if hasattr(callback, "run"):
-                self.parent = parent = callback
-                self.function = callback.run
-                callback.test = staticmethod(self.unittest_caller)
-            else:
-                raise NameError("missing required 'run' method for class: '{}'".format(callback.__name__))
-        else:
-            # Register a function callback
-            self.parent = parent
-            self.function = callback
-            callback.test = self.unittest_caller
-
         self.is_playable = parent.is_playable
         self.is_folder = parent.is_folder
         self.callback = callback
+        self.parent = parent
         self.path = path
+
+    def __call__(self, *args, **kwargs):
+        return self.callback(*args, **kwargs)
+
+    def execute(self, callback_params):
+        parent_ins = self.parent()
+        results = self.callback(parent_ins, **callback_params)
+
+        if hasattr(parent_ins, "_process_results"):
+            # noinspection PyProtectedMember
+            parent_ins._process_results(results)
 
     def args_to_kwargs(self, args, kwargs):  # type: (tuple, dict) -> None
         """Convert positional arguments to keyword arguments and merge into callback parameters."""
@@ -131,12 +128,12 @@ class Route(object):
     def arg_names(self):  # type: () -> list
         """Return a list of argument names, positional and keyword arguments."""
         if PY3:
-            return inspect.getfullargspec(self.function).args
+            return inspect.getfullargspec(self.callback).args
         else:
             # noinspection PyDeprecation
-            return inspect.getargspec(self.function).args
+            return inspect.getargspec(self.callback).args
 
-    def unittest_caller(self, *args, **kwargs):
+    def test(self, *args, **kwargs):
         """
         Function to allow callbacks to be easily called from unittests.
         Parent argument will be auto instantiated and passed to callback.
@@ -168,11 +165,14 @@ class Route(object):
 
         try:
             # Now we are ready to call the callback function and return its results
-            results = self.function(parent_ins, *args, **kwargs)
+            print(kwargs)
+            results = self.callback(parent_ins, *args, **kwargs)
             if inspect.isgenerator(results):
                 results = list(results)
 
         except Exception:
+            # This is only here to allow for
+            # the use of the finally clause
             raise
 
         else:
@@ -235,7 +235,7 @@ class Dispatcher(object):
         """
         Register route callback function
 
-        :param callback: The callback function.
+        :param function callback: The callback function.
         :param parent: Parent class that will handle the callback, used when callback is a function.
         :returns: The callback function with extra attributes added, 'route', 'testcall'.
         """
@@ -249,8 +249,7 @@ class Dispatcher(object):
             logger.debug("encountered duplicate route: '%s'", path)
 
         self.registered_routes[path] = route = Route(callback, parent, path)
-        callback.route = route
-        return callback
+        return route
 
     def register_delayed(self, func, args, kwargs):
         """Register a function that will be called later, after content has been listed."""
@@ -277,12 +276,8 @@ class Dispatcher(object):
             route = self.get_route()
             execute_time = time.time()
 
-            # Initialize controller and execute callback
-            parent_ins = route.parent()
-            results = route.function(parent_ins, **self.callback_params)
-            if hasattr(parent_ins, "_process_results"):
-                # noinspection PyProtectedMember
-                parent_ins._process_results(results)
+            # Execute callback
+            route.execute(self.callback_params)
 
         except Exception as e:
             try:
@@ -325,7 +320,7 @@ def build_path(callback=None, args=None, query=None, **extra_query):
     """
     Build addon url that can be passeed to kodi for kodi to use when calling listitems.
 
-    :param callback: [opt] The route selector path referencing the callback object. (default => current route selector)
+    :param Route callback: [opt] The route selector path referencing the callback object. (default => current route selector)
     :param tuple args: [opt] Positional arguments that will be add to plugin path.
     :param dict query: [opt] A set of query key/value pairs to add to plugin path.
     :param extra_query: [opt] Keyword arguments if given will be added to the current set of querys.
@@ -333,13 +328,13 @@ def build_path(callback=None, args=None, query=None, **extra_query):
     :return: Plugin url for kodi.
     :rtype: str
     """
-
     # Set callback to current callback if not given
-    route = callback.route if callback else dispatcher.get_route()
+    if callback is None:
+        callback = dispatcher.get_route()
 
     # Convert args to keyword args if required
     if args:
-        route.args_to_kwargs(args, query)
+        callback.args_to_kwargs(args, query)
 
     # If extra querys are given then append the
     # extra querys to the current set of querys
@@ -353,7 +348,7 @@ def build_path(callback=None, args=None, query=None, **extra_query):
         query = "_pickle_={}".format(pickled.decode("ascii") if PY3 else pickled)
 
     # Build kodi url with new path and query parameters
-    return urlparse.urlunsplit(("plugin", plugin_id, route.path, query, ""))
+    return urlparse.urlunsplit(("plugin", plugin_id, callback.path, query, ""))
 
 
 # Setup kodi logging

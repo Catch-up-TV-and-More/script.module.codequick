@@ -13,7 +13,7 @@ import xbmcgui
 
 # Package imports
 from codequick.script import Script
-from codequick.support import auto_sort, build_path, logger_id, dispatcher
+from codequick.support import auto_sort, build_path, logger_id, dispatcher, Route
 from codequick.utils import ensure_unicode, ensure_native_str, unicode_type, PY3, bold
 
 if PY3:
@@ -149,7 +149,6 @@ class Art(Params):
         >>> item.art["fanart"] = "http://www.example.ie/fanart.jpg"
         >>> item.art.local_thumb("thumbnail.png")
     """
-
     def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
         super(Art, self).__init__()
         self._listitem = listitem
@@ -227,7 +226,6 @@ class Info(Params):
         >>> item.info['genre'] = 'Science Fiction'
         >>> item.info['size'] = 256816
     """
-
     def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
         super(Info, self).__init__()
         self._listitem = listitem
@@ -468,12 +466,12 @@ class Context(list):
 
         All this really does is to call "context.container" and sets "label" for you.
 
-        :param callback: The function that will be called when menu item is activated.
+        :param Route callback: The function that will be called when menu item is activated.
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
         """
         # Add '_updatelisting_ = True' to callback params if called from the same callback as is given here
-        if callback.route == dispatcher.get_route():
+        if callback == dispatcher.get_route():
             kwargs["_updatelisting_"] = True
 
         related_videos_text = Script.localize(RELATED_VIDEOS)
@@ -485,7 +483,7 @@ class Context(list):
         Convenient method to add a context menu item that links to a "container".
 
         :type label: str
-        :param callback: The function that will be called when menu item is activated.
+        :param Route callback: The function that will be called when menu item is activated.
         :param label: The label of the context menu item.
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
@@ -497,7 +495,7 @@ class Context(list):
         """
         Convenient method to add a context menu item that links to a "script".
 
-        :param callback: The function that will be called when menu item is activated.
+        :param Route callback: The function that will be called when menu item is activated.
         :type label: str or unicode
         :param label: The label of the context menu item.
         :param args: [opt] "Positional" arguments that will be passed to the callback.
@@ -602,6 +600,7 @@ class Listitem(object):
         :class:`codequick.Route<codequick.route.Route>` or :class:`codequick.Resolver<codequick.resolver.Resolver>`
         callback, or playable URL.
 
+        :type callback: str or Route
         :param callback: The "callback" or playable URL.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
@@ -615,16 +614,16 @@ class Listitem(object):
     def _close(self):
         callback = self.path
         listitem = self.listitem
-        if hasattr(callback, "route"):
-            listitem.setProperty("isplayable", str(callback.route.is_playable).lower())
-            listitem.setProperty("folder", str(callback.route.is_folder).lower())
+        if isinstance(callback, Route):
+            listitem.setProperty("isplayable", str(callback.is_playable).lower())
+            listitem.setProperty("folder", str(callback.is_folder).lower())
             path = build_path(callback, self._args, self.params.raw_dict)
-            isfolder = callback.route.is_folder
+            isfolder = callback.is_folder
         else:
             listitem.setProperty("isplayable", "true" if callback else "false")
             listitem.setProperty("folder", "false")
-            path = callback
             isfolder = False
+            path = callback
 
         if not isfolder:
             # Add mediatype if not already set
@@ -716,7 +715,7 @@ class Listitem(object):
             >>> item.next_page(url="http://example.com/videos?page2")
         """
         # Current running callback
-        callback = dispatcher.get_route().callback
+        callback = dispatcher.get_route()
         callback = kwargs.pop("callback", callback)
 
         # Add support params to callback params
@@ -740,7 +739,7 @@ class Listitem(object):
 
         This is a convenience method that creates the listitem with "name", "thumbnail" and "plot", already preset.
 
-        :param callback: The "callback" function.
+        :param Route callback: The "callback" function.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
         """
@@ -762,24 +761,24 @@ class Listitem(object):
         that was given will be executed with all parameters forwarded on. Except with one extra
         parameter, ``search_query``, which is the "search term" that was selected.
 
-        :param callback: Function that will be called when the "listitem" is activated.
+        :param Route callback: Function that will be called when the "listitem" is activated.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
         :raises ValueError: If the given "callback" function does not have a ``search_query`` parameter.
         """
         # Check that callback function has required parameter(search_query)
-        if "search_query" not in callback.route.arg_names():
+        if "search_query" not in callback.arg_names():
             raise ValueError("callback function is missing required argument: 'search_query'")
 
         if args:
             # Convert positional arguments to keyword arguments
-            callback.route.args_to_kwargs(args, kwargs)
+            callback.args_to_kwargs(args, kwargs)
 
         item = cls()
         item.label = bold(Script.localize(SEARCH))
         item.art.global_thumb("search.png")
         item.info["plot"] = Script.localize(SEARCH_PLOT)
-        item.set_callback(saved_searches, _route=callback.route.path, first_load=True, **kwargs)
+        item.set_callback(saved_searches, _route=callback.path, first_load=True, **kwargs)
         return item
 
     @classmethod
