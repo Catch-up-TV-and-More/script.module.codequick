@@ -1,7 +1,7 @@
 import unittest
 
 from codequick import listing, route, resolver
-from codequick.support import dispatcher
+from codequick.support import dispatcher, registered_routes
 from codequick.utils import unicode_type
 import xbmcgui
 import xbmc
@@ -267,7 +267,7 @@ class Context(unittest.TestCase):
     def setUp(self):
         listitem = xbmcgui.ListItem()
         self.base = listing.Context(listitem)
-        self.org_routes = dispatcher.registered_routes.copy()
+        self.org_routes = registered_routes.copy()
 
         # noinspection PyUnusedLocal
         @route.Route.register
@@ -283,8 +283,8 @@ class Context(unittest.TestCase):
 
     def tearDown(self):
         dispatcher.reset()
-        dispatcher.registered_routes.clear()
-        dispatcher.registered_routes.update(self.org_routes)
+        registered_routes.clear()
+        registered_routes.update(self.org_routes)
 
     def test_container(self):
         self.base.container(self.test_callback, "test label")
@@ -354,7 +354,7 @@ class Context(unittest.TestCase):
 class TestListitem(unittest.TestCase):
     def setUp(self):
         self.listitem = listing.Listitem()
-        self.org_routes = dispatcher.registered_routes.copy()
+        self.org_routes = registered_routes.copy()
 
         # noinspection PyUnusedLocal
         @route.Route.register
@@ -376,8 +376,8 @@ class TestListitem(unittest.TestCase):
 
     def tearDown(self):
         dispatcher.reset()
-        dispatcher.registered_routes.clear()
-        dispatcher.registered_routes.update(self.org_routes)
+        registered_routes.clear()
+        registered_routes.update(self.org_routes)
 
     def test_label(self):
         self.listitem.label = "test label"

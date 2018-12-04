@@ -30,6 +30,9 @@ logger = logging.getLogger("%s.support" % logger_id)
 # Listitem auto sort methods
 auto_sort = set()
 
+# Dictionary of registered callback routes
+registered_routes = {}
+
 
 class LoggingMap(dict):
     def __init__(self):
@@ -82,38 +85,43 @@ class KodiLogHandler(logging.Handler):
             xbmc.log("###### debug ######", xbmc.LOGWARNING)
 
 
-class Route(object):
+class Callback(object):
     """
-    Handle callback route data.
+    Register callback function
 
-    :param callback: The callable callback function.
-    :param parent: The parent class that will handle the response from callback.
-    :param str path: The route path to func/class.
+    :param function callback: The callback function.
+    :param parent: Parent class that will handle the callback, used when callback is a function.
 
     :ivar bool is_playable: True if callback is playable, else False.
     :ivar bool is_folder: True if callback is a folder, else False.
     :ivar function callback: The decorated function.
-    :ivar parent: The parent class that will handle the response from callback.
+    :ivar Script parent: The parent class that will handle the response from callback.
     :ivar str path: The route path to function.
     """
-    __slots__ = ("parent", "callback", "path", "is_playable", "is_folder")
+    __slots__ = ("_parent", "_func", "path", "is_playable", "is_folder")
 
     def __eq__(self, other):
         return self.path == other.path
 
-    def __init__(self, callback, parent, path):
+    def __init__(self, callback, parent):
+        # Construct route path
+        path = callback.__name__.lower()
+        if path != "root":
+            path = "/{}/{}/".format(callback.__module__.strip("_").replace(".", "/"), callback.__name__).lower()
+
+        registered_routes[path] = self
         self.is_playable = parent.is_playable
         self.is_folder = parent.is_folder
-        self.callback = callback
-        self.parent = parent
+        self._parent = parent
+        self._func = callback
         self.path = path
 
     def __call__(self, *args, **kwargs):
-        return self.callback(*args, **kwargs)
+        return self._func(*args, **kwargs)
 
     def execute(self, callback_params):
-        parent_ins = self.parent()
-        results = self.callback(parent_ins, **callback_params)
+        parent_ins = self._parent()
+        results = self._func(parent_ins, **callback_params)
 
         if hasattr(parent_ins, "_process_results"):
             # noinspection PyProtectedMember
@@ -128,10 +136,10 @@ class Route(object):
     def arg_names(self):  # type: () -> list
         """Return a list of argument names, positional and keyword arguments."""
         if PY3:
-            return inspect.getfullargspec(self.callback).args
+            return inspect.getfullargspec(self._func).args
         else:
             # noinspection PyDeprecation
-            return inspect.getargspec(self.callback).args
+            return inspect.getargspec(self._func).args
 
     def test(self, *args, **kwargs):
         """
@@ -161,12 +169,11 @@ class Route(object):
             dispatcher.params.update(kwargs)
 
         # Instantiate the parent
-        parent_ins = self.parent()
+        parent_ins = self._parent()
 
         try:
             # Now we are ready to call the callback function and return its results
-            print(kwargs)
-            results = self.callback(parent_ins, *args, **kwargs)
+            results = self._func(parent_ins, *args, **kwargs)
             if inspect.isgenerator(results):
                 results = list(results)
 
@@ -193,7 +200,6 @@ class Dispatcher(object):
 
     def __init__(self):
         self.registered_delayed = []
-        self.registered_routes = {}
         self.callback_params = {}
         self.selector = "root"
         self.params = {}
@@ -227,29 +233,9 @@ class Dispatcher(object):
             self.callback_params = {key: value for key, value in self.params.items()
                                     if not (key.startswith(u"_") and key.endswith(u"_"))}
 
-    def get_route(self, path=None):  # type: (str) -> Route
+    def get_route(self, path=None):  # type: (str) -> Callback
         """Return the given route object."""
-        return self.registered_routes[path if path else self.selector]
-
-    def register_callback(self, callback, parent):
-        """
-        Register route callback function
-
-        :param function callback: The callback function.
-        :param parent: Parent class that will handle the callback, used when callback is a function.
-        :returns: The callback function with extra attributes added, 'route', 'testcall'.
-        """
-        # Construct route path
-        path = callback.__name__.lower()
-        if path != "root":
-            path = "/{}/{}/".format(callback.__module__.strip("_").replace(".", "/"), callback.__name__).lower()
-
-        # Register callback
-        if path in self.registered_routes:
-            logger.debug("encountered duplicate route: '%s'", path)
-
-        self.registered_routes[path] = route = Route(callback, parent, path)
-        return route
+        return registered_routes[path if path else self.selector]
 
     def register_delayed(self, func, args, kwargs):
         """Register a function that will be called later, after content has been listed."""
@@ -320,7 +306,7 @@ def build_path(callback=None, args=None, query=None, **extra_query):
     """
     Build addon url that can be passeed to kodi for kodi to use when calling listitems.
 
-    :param Route callback: [opt] The route selector path referencing the callback object. (default => current route selector)
+    :param Callback callback: [opt] The route path referencing the callback object. (default => current route selector)
     :param tuple args: [opt] Positional arguments that will be add to plugin path.
     :param dict query: [opt] A set of query key/value pairs to add to plugin path.
     :param extra_query: [opt] Keyword arguments if given will be added to the current set of querys.

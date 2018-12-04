@@ -50,8 +50,7 @@ class TestRoute(unittest.TestCase):
         def test_callback(_, one=1, two="2", return_data=None):
             return return_data
 
-        path = test_callback.__name__.lower()
-        self.route = support.Route(test_callback, route.Route, path)
+        self.route = support.Callback(test_callback, route.Route)
 
     def test_arg_names(self):
         args = self.route.arg_names()
@@ -79,9 +78,7 @@ class TestRoute(unittest.TestCase):
         def test_callback(_):
             raise RuntimeError
 
-        path = test_callback.__name__.lower()
-        route_obj = support.Route(test_callback, route.Route, path)
-
+        route_obj = support.Callback(test_callback, route.Route)
         with self.assertRaises(RuntimeError):
             route_obj.test()
 
@@ -162,26 +159,26 @@ class TestDispatcher(unittest.TestCase):
         def root():
             pass
 
-        callback = self.dispatcher.register_callback(root, route.Route)
-        self.assertIn("root", self.dispatcher.registered_routes)
-        self.assertIsInstance(callback, support.Route)
+        callback = support.Callback(root, route.Route)
+        self.assertIn("root", support.registered_routes)
+        self.assertIsInstance(callback, support.Callback)
         self.assertTrue(inspect.ismethod(callback.test))
 
     def test_register_non_root(self):
         def listing():
             pass
 
-        callback = self.dispatcher.register_callback(listing, route.Route)
-        self.assertIn("/tests/test_support/listing/", self.dispatcher.registered_routes)
-        self.assertIsInstance(callback, support.Route)
+        callback = support.Callback(listing, route.Route)
+        self.assertIn("/tests/test_support/listing/", support.registered_routes)
+        self.assertIsInstance(callback, support.Callback)
         self.assertTrue(inspect.ismethod(callback.test))
 
     def test_register_duplicate(self):
         def root():
             pass
 
-        self.dispatcher.register_callback(root, route.Route)
-        self.dispatcher.register_callback(root, route.Route)
+        support.Callback(root, route.Route)
+        support.Callback(root, route.Route)
 
     def test_dispatch(self):
         class Executed(object):
@@ -191,8 +188,7 @@ class TestDispatcher(unittest.TestCase):
             Executed.yes = True
             return False
 
-        self.dispatcher.register_callback(root, route.Route)
-
+        support.Callback(root, route.Route)
         with mock_argv(["plugin://script.module.codequick", 96, ""]):
             self.dispatcher.run_callback()
 
@@ -206,7 +202,7 @@ class TestDispatcher(unittest.TestCase):
             Executed.yes = True
             return False
 
-        self.dispatcher.register_callback(root, script.Script)
+        support.Callback(root, script.Script)
         self.dispatcher.run_callback()
         self.assertTrue(Executed.yes)
 
@@ -219,8 +215,7 @@ class TestDispatcher(unittest.TestCase):
             Executed.yes = True
             raise RuntimeError("testing error")
 
-        self.dispatcher.register_callback(root, route.Route)
-
+        support.Callback(root, route.Route)
         with mock_argv(["plugin://script.module.codequick", 96, ""]):
             self.dispatcher.run_callback()
 
@@ -235,7 +230,7 @@ class TestDispatcher(unittest.TestCase):
             Executed.yes = True
             raise RuntimeError(u"testing \xe9")
 
-        self.dispatcher.register_callback(root, route.Route)
+        support.Callback(root, route.Route)
         with mock_argv(["plugin://script.module.codequick", 96, ""]):
             self.dispatcher.run_callback()
 
@@ -253,7 +248,7 @@ class BuildPath(unittest.TestCase):
 
     def tearDown(self):
         support.dispatcher.reset()
-        del support.dispatcher.registered_routes["root"]
+        del support.registered_routes["root"]
 
     def test_build_path_no_args(self):
         ret = support.build_path()

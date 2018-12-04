@@ -8,7 +8,7 @@ import xbmc
 
 from codequick import resolver
 from codequick.listing import Listitem as custom_listitem
-from codequick.support import dispatcher
+from codequick.support import dispatcher, registered_routes
 
 from . import YDStreamExtractor
 sys.modules["YDStreamExtractor"] = YDStreamExtractor
@@ -24,7 +24,7 @@ def temp_callback(func):
         try:
             func(*args)
         finally:
-            del dispatcher.registered_routes[root.path]
+            del registered_routes[root.path]
 
     return wrapper
 

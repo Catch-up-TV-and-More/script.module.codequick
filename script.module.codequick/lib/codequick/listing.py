@@ -13,7 +13,7 @@ import xbmcgui
 
 # Package imports
 from codequick.script import Script
-from codequick.support import auto_sort, build_path, logger_id, dispatcher, Route
+from codequick.support import auto_sort, build_path, logger_id, dispatcher, Callback
 from codequick.utils import ensure_unicode, ensure_native_str, unicode_type, PY3, bold
 
 if PY3:
@@ -466,7 +466,7 @@ class Context(list):
 
         All this really does is to call "context.container" and sets "label" for you.
 
-        :param Route callback: The function that will be called when menu item is activated.
+        :param Callback callback: The function that will be called when menu item is activated.
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
         """
@@ -483,7 +483,7 @@ class Context(list):
         Convenient method to add a context menu item that links to a "container".
 
         :type label: str
-        :param Route callback: The function that will be called when menu item is activated.
+        :param Callback callback: The function that will be called when menu item is activated.
         :param label: The label of the context menu item.
         :param args: [opt] "Positional" arguments that will be passed to the callback.
         :param kwargs: [opt] "Keyword" arguments that will be passed to the callback.
@@ -495,7 +495,7 @@ class Context(list):
         """
         Convenient method to add a context menu item that links to a "script".
 
-        :param Route callback: The function that will be called when menu item is activated.
+        :param Callback callback: The function that will be called when menu item is activated.
         :type label: str or unicode
         :param label: The label of the context menu item.
         :param args: [opt] "Positional" arguments that will be passed to the callback.
@@ -600,7 +600,7 @@ class Listitem(object):
         :class:`codequick.Route<codequick.route.Route>` or :class:`codequick.Resolver<codequick.resolver.Resolver>`
         callback, or playable URL.
 
-        :type callback: str or Route
+        :type callback: str or Callback
         :param callback: The "callback" or playable URL.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
@@ -614,7 +614,7 @@ class Listitem(object):
     def _close(self):
         callback = self.path
         listitem = self.listitem
-        if isinstance(callback, Route):
+        if isinstance(callback, Callback):
             listitem.setProperty("isplayable", str(callback.is_playable).lower())
             listitem.setProperty("folder", str(callback.is_folder).lower())
             path = build_path(callback, self._args, self.params.raw_dict)
@@ -739,7 +739,7 @@ class Listitem(object):
 
         This is a convenience method that creates the listitem with "name", "thumbnail" and "plot", already preset.
 
-        :param Route callback: The "callback" function.
+        :param Callback callback: The "callback" function.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
         """
@@ -761,7 +761,7 @@ class Listitem(object):
         that was given will be executed with all parameters forwarded on. Except with one extra
         parameter, ``search_query``, which is the "search term" that was selected.
 
-        :param Route callback: Function that will be called when the "listitem" is activated.
+        :param Callback callback: Function that will be called when the "listitem" is activated.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
         :raises ValueError: If the given "callback" function does not have a ``search_query`` parameter.

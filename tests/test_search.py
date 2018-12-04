@@ -5,7 +5,7 @@ import os
 
 # Testing specific imports
 from codequick import search, route, storage
-from codequick.support import dispatcher
+from codequick.support import dispatcher, registered_routes
 from codequick.listing import Listitem
 
 hash_params = search.Search.hash_params
@@ -27,15 +27,15 @@ class TestGlobalLocalization(unittest.TestCase):
 
 class Search(unittest.TestCase):
     def setUp(self):
-        self.org_routes = dispatcher.registered_routes.copy()
+        self.org_routes = registered_routes.copy()
         path = os.path.join(storage.profile_dir, search.SEARCH_DB)
         if os.path.exists(path):
             os.remove(path)
 
     def tearDown(self):
         dispatcher.reset()
-        dispatcher.registered_routes.clear()
-        dispatcher.registered_routes.update(self.org_routes)
+        registered_routes.clear()
+        registered_routes.update(self.org_routes)
 
     def test_first_load(self):
         @route.Route.register

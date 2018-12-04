@@ -12,7 +12,7 @@ import xbmc
 
 # Package imports
 from codequick.utils import ensure_unicode, ensure_native_str, unicode_type, string_map
-from codequick.support import dispatcher, script_data, addon_data, logger_id
+from codequick.support import dispatcher, script_data, addon_data, logger_id, Callback
 
 __all__ = ["Script", "Settings"]
 
@@ -160,14 +160,15 @@ class Script(object):
         self.handle = dispatcher.handle
 
     @classmethod
-    def register(cls, callback):
+    def register(cls, func):
         """
         Decorator used to register callback functions.
 
-        :param Route callback: The callback function to register.
-        :returns: The original callback function.
+        :param function func: The callback function to register.
+        :returns: A callback instance.
+        :rtype: Callback
         """
-        return dispatcher.register_callback(callback, parent=cls)
+        return Callback(func, parent=cls)
 
     @staticmethod
     def register_delayed(func, *args, **kwargs):
@@ -180,7 +181,7 @@ class Script(object):
 
             Functions will be called in reverse order to the order they are added (LIFO).
 
-        :param func: Function that will be called after "xbmcplugin.endOfDirectory" is called.
+        :param func: Callable that will be called after "xbmcplugin.endOfDirectory" is called.
         :param args: "Positional" arguments that will be passed to function.
         :param kwargs: "Keyword" arguments that will be passed to function.
         """
