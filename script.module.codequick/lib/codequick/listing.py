@@ -779,7 +779,7 @@ class Listitem(object):
         item.label = bold(Script.localize(SEARCH))
         item.art.global_thumb("search.png")
         item.info["plot"] = Script.localize(SEARCH_PLOT)
-        item.set_callback(SavedSearches, _route=callback.route.path, first_load=True, **kwargs)
+        item.set_callback(saved_searches, _route=callback.route.path, first_load=True, **kwargs)
         return item
 
     @classmethod
@@ -816,4 +816,4 @@ class Listitem(object):
 
 # Import callback functions required for listitem constructs
 from codequick.youtube import playlist as ytplaylist
-from codequick.search import SavedSearches
+from codequick.search import saved_searches
