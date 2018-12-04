@@ -120,7 +120,7 @@ def list_terms(searchdb, plugin, extras):
     # Set the callback function to the route that was given
     callback_params = extras.copy()
     route = callback_params.pop("_route")
-    callback = dispatcher.get_route(route).callback
+    callback = dispatcher.get_route(route)
 
     # Prefetch the localized string for the context menu lable
     str_remove = plugin.localize(REMOVE)
