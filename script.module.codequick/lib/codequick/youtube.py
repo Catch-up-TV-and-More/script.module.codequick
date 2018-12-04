@@ -8,6 +8,7 @@ import json
 import os
 
 # Package imports
+from codequick.script import Script
 from codequick.route import Route
 from codequick.utils import bold
 from codequick.listing import Listitem
@@ -349,13 +350,13 @@ class API(object):
         return self._connect_v3("search", query)
 
 
-class APIControl(Route):
+class APIControl(object):
     """Class to control the access to the youtube API."""
 
     def __init__(self):
         super(APIControl, self).__init__()
         self.db = Database()
-        self.register_delayed(self.db.cleanup)
+        Script.register_delayed(self.db.cleanup)
         self.api = API()
 
     def valid_playlistid(self, contentid):
@@ -498,7 +499,7 @@ class APIControl(Route):
         """
         # Check that the quality setting is set to HD or greater
         try:
-            ishd = self.setting.get_int("video_quality", addon_id="script.module.youtube.dl")
+            ishd = Script.setting.get_int("video_quality", addon_id="script.module.youtube.dl")
         except RuntimeError:  # pragma: no cover
             ishd = True
 
@@ -539,11 +540,11 @@ class APIControl(Route):
             item.info["duration"] = video_data["duration"]
 
             # Add Context item to link to related videos
-            item.context.related(Related, video_id=video_data["video_id"])
+            item.context.related(related, video_id=video_data["video_id"])
 
             # Add Context item for youtube channel if videos from more than one channel are ben listed
             if multi_channel:
-                item.context.container(Playlist, u"Go to: %s" % video_data["channel_title"],
+                item.context.container(playlist, u"Go to: %s" % video_data["channel_title"],
                                        contentid=video_data["channel_id"])
 
             # Return the listitem
@@ -566,143 +567,149 @@ class APIControl(Route):
 
 
 @Route.register
-class Playlists(APIControl):
-    def run(self, channel_id, show_all=True, pagetoken=None, loop=False):
-        """
-        List all playlist for giving channel
+def playlists(plugin, channel_id, show_all=True, pagetoken=None, loop=False):
+    """
+    List all playlist for giving channel
 
-        :param str channel_id: Channel id to list playlists for.
-        :param bool show_all: [opt] Add link to all of the channels videos if True. (default => True)
-        :param str pagetoken: [opt] The token for the next page of results.
-        :param bool loop: [opt] Return all the playlist for channel. (Default => False)
+    :param Route plugin: Tools related to Route callbacks.
+    :param str channel_id: Channel id to list playlists for.
+    :param bool show_all: [opt] Add link to all of the channels videos if True. (default => True)
+    :param str pagetoken: [opt] The token for the next page of results.
+    :param bool loop: [opt] Return all the playlist for channel. (Default => False)
 
-        :returns: A generator of listitems.
-        :rtype: :class:`types.GeneratorType`
-        """
-        # Make sure that we have a valid channel id
-        if not channel_id.startswith("UC"):
-            raise ValueError("channel_id is not valid: %s" % channel_id)
+    :returns: A generator of listitems.
+    :rtype: :class:`types.GeneratorType`
+    """
+    gdata = APIControl()
 
-        # Fetch fanart image for channel
-        fanart = self.db.cur.execute("SELECT fanart FROM channels WHERE channel_id = ?", (channel_id,)).fetchone()
-        if fanart:  # pragma: no branch
-            fanart = fanart[0]
+    # Make sure that we have a valid channel id
+    if not channel_id.startswith("UC"):
+        raise ValueError("channel_id is not valid: %s" % channel_id)
 
-        # Fetch channel playlists feed
-        feed = self.api.playlists(channel_id, pagetoken, loop)
+    # Fetch fanart image for channel
+    fanart = gdata.db.cur.execute("SELECT fanart FROM channels WHERE channel_id = ?", (channel_id,)).fetchone()
+    if fanart:  # pragma: no branch
+        fanart = fanart[0]
 
-        # Add next Page entry if pagetoken is found
-        if u"nextPageToken" in feed:  # pragma: no branch
-            yield Listitem.next_page(channel_id=channel_id, show_all=False, pagetoken=feed[u"nextPageToken"])
+    # Fetch channel playlists feed
+    feed = gdata.api.playlists(channel_id, pagetoken, loop)
 
-        # Display a link for listing all channel videos
-        # This is usefull when the root of a addon is the playlist directory
-        if show_all:
-            title = bold(self.localize(ALLVIDEOS))
-            yield Listitem.youtube(channel_id, title, enable_playlists=False)
+    # Add next Page entry if pagetoken is found
+    if u"nextPageToken" in feed:  # pragma: no branch
+        yield Listitem.next_page(channel_id=channel_id, show_all=False, pagetoken=feed[u"nextPageToken"])
 
-        # Loop Entries
-        for playlist_item in feed[u"items"]:
-            # Create listitem object
-            item = Listitem()
+    # Display a link for listing all channel videos
+    # This is usefull when the root of a addon is the playlist directory
+    if show_all:
+        title = bold(plugin.localize(ALLVIDEOS))
+        yield Listitem.youtube(channel_id, title, enable_playlists=False)
 
-            # Check if there is actualy items in the playlist before listing
-            item_count = playlist_item[u"contentDetails"][u"itemCount"]
-            if item_count == 0:  # pragma: no cover
-                continue
+    # Loop Entries
+    for playlist_item in feed[u"items"]:
+        # Create listitem object
+        item = Listitem()
 
-            # Fetch video snippet
-            snippet = playlist_item[u"snippet"]
+        # Check if there is actualy items in the playlist before listing
+        item_count = playlist_item[u"contentDetails"][u"itemCount"]
+        if item_count == 0:  # pragma: no cover
+            continue
 
-            # Set label
-            item.label = u"%s (%s)" % (snippet[u"localized"][u"title"], item_count)
+        # Fetch video snippet
+        snippet = playlist_item[u"snippet"]
 
-            # Fetch Image Url
-            item.art["thumb"] = snippet[u"thumbnails"][u"medium"][u"url"]
+        # Set label
+        item.label = u"%s (%s)" % (snippet[u"localized"][u"title"], item_count)
 
-            # Set Fanart
-            item.art["fanart"] = fanart
+        # Fetch Image Url
+        item.art["thumb"] = snippet[u"thumbnails"][u"medium"][u"url"]
 
-            # Fetch Possible Plot and Check if Available
-            item.info["plot"] = snippet[u"localized"][u"description"]
+        # Set Fanart
+        item.art["fanart"] = fanart
 
-            # Add InfoLabels and Data to Processed List
-            item.set_callback(Playlist, contentid=playlist_item[u"id"], enable_playlists=False)
-            yield item
+        # Fetch Possible Plot and Check if Available
+        item.info["plot"] = snippet[u"localized"][u"description"]
 
-
-@Route.register
-class Playlist(APIControl):
-    def run(self, contentid, pagetoken=None, enable_playlists=True, loop=False):
-        """
-        List all video within youtube playlist
-
-        :param str contentid: Channel id or playlist id to list videos for.
-        :param str pagetoken: [opt] The page token representing the next page of content.
-        :param bool enable_playlists: [opt] Set to True to enable linking to channel playlists. (default => False)
-        :param bool loop: [opt] Return all the videos within playlist. (Default => False)
-
-        :returns: A generator of listitems.
-        :rtype: :class:`types.GeneratorType`
-        """
-        # Fetch channel uploads uuid
-        playlist_id = self.valid_playlistid(contentid)
-
-        # Request data feed
-        feed = self.api.playlist_items(playlist_id, pagetoken, loop)
-        channel_list = set()
-        video_list = []
-
-        # Fetch video ids for all public videos
-        for item in feed[u"items"]:
-            if u"status" in item and item[u"status"][u"privacyStatus"] in EXCEPTED_STATUS:  # pragma: no branch
-                channel_list.add(item[u"snippet"][u"channelId"])
-                video_list.append(item[u"snippet"][u"resourceId"][u"videoId"])
-            else:  # pragma: no cover
-                logger.debug("Skipping non plublic video: '%s'", item[u"snippet"][u"resourceId"][u"videoId"])
-
-        # Return the list of video listitems
-        results = list(self.videos(video_list, multi_channel=len(channel_list) > 1))
-        if u"nextPageToken" in feed:
-            next_item = Listitem.next_page(contentid=contentid, pagetoken=feed[u"nextPageToken"])
-            results.append(next_item)
-
-        # Add playlists item to results
-        if enable_playlists and contentid.startswith("UC") and pagetoken is None:
-            item = Listitem()
-            item.label = u"[B]%s[/B]" % self.localize(PLAYLISTS)
-            item.info["plot"] = self.localize(PLAYLISTS_PLOT)
-            item.art["icon"] = "DefaultVideoPlaylists.png"
-            item.art.global_thumb("playlist.png")
-            item.set_callback(Playlists, channel_id=contentid, show_all=False)
-            results.append(item)
-
-        return results
+        # Add InfoLabels and Data to Processed List
+        item.set_callback(playlist, contentid=playlist_item[u"id"], enable_playlists=False)
+        yield item
 
 
 @Route.register
-class Related(APIControl):
-    def run(self, video_id, pagetoken=None):
-        """
-        Search for all videos related to a giving video id.
+def playlist(plugin, contentid, pagetoken=None, enable_playlists=True, loop=False):
+    """
+    List all video within youtube playlist
 
-        :param str video_id: Id of the video the fetch related video for.
-        :param str pagetoken: [opt] The page token representing the next page of content.
+    :param Route plugin: Tools related to Route callbacks.
+    :param str contentid: Channel id or playlist id to list videos for.
+    :param str pagetoken: [opt] The page token representing the next page of content.
+    :param bool enable_playlists: [opt] Set to True to enable linking to channel playlists. (default => False)
+    :param bool loop: [opt] Return all the videos within playlist. (Default => False)
 
-        :returns: A generator of listitems.
-        :rtype: :class:`types.GeneratorType`
-        """
-        self.category = "Related"
-        self.update_listing = bool(pagetoken)
-        feed = self.api.search(pageToken=pagetoken, relatedToVideoId=video_id)
-        video_list = [item[u"id"][u"videoId"] for item in feed[u"items"]]  # pragma: no branch
+    :returns: A generator of listitems.
+    :rtype: :class:`types.GeneratorType`
+    """
+    gdata = APIControl()
 
-        # List all the related videos
-        results = list(self.videos(video_list, multi_channel=True))
-        if u"nextPageToken" in feed:  # pragma: no branch
-            next_item = Listitem.next_page(video_id=video_id, pagetoken=feed[u"nextPageToken"])
-            results.append(next_item)
-        return results
+    # Fetch channel uploads uuid
+    playlist_id = gdata.valid_playlistid(contentid)
+
+    # Request data feed
+    feed = gdata.api.playlist_items(playlist_id, pagetoken, loop)
+    channel_list = set()
+    video_list = []
+
+    # Fetch video ids for all public videos
+    for item in feed[u"items"]:
+        if u"status" in item and item[u"status"][u"privacyStatus"] in EXCEPTED_STATUS:  # pragma: no branch
+            channel_list.add(item[u"snippet"][u"channelId"])
+            video_list.append(item[u"snippet"][u"resourceId"][u"videoId"])
+        else:  # pragma: no cover
+            logger.debug("Skipping non plublic video: '%s'", item[u"snippet"][u"resourceId"][u"videoId"])
+
+    # Return the list of video listitems
+    results = list(gdata.videos(video_list, multi_channel=len(channel_list) > 1))
+    if u"nextPageToken" in feed:
+        next_item = Listitem.next_page(contentid=contentid, pagetoken=feed[u"nextPageToken"])
+        results.append(next_item)
+
+    # Add playlists item to results
+    if enable_playlists and contentid.startswith("UC") and pagetoken is None:
+        item = Listitem()
+        item.label = u"[B]%s[/B]" % plugin.localize(PLAYLISTS)
+        item.info["plot"] = plugin.localize(PLAYLISTS_PLOT)
+        item.art["icon"] = "DefaultVideoPlaylists.png"
+        item.art.global_thumb("playlist.png")
+        item.set_callback(playlists, channel_id=contentid, show_all=False)
+        results.append(item)
+
+    return results
+
+
+@Route.register
+def related(plugin, video_id, pagetoken=None):
+    """
+    Search for all videos related to a giving video id.
+
+    :param Route plugin: Tools related to Route callbacks.
+    :param str video_id: Id of the video the fetch related video for.
+    :param str pagetoken: [opt] The page token representing the next page of content.
+
+    :returns: A generator of listitems.
+    :rtype: :class:`types.GeneratorType`
+    """
+    gdata = APIControl()
+    plugin.category = "Related"
+    plugin.update_listing = bool(pagetoken)
+    feed = gdata.api.search(pageToken=pagetoken, relatedToVideoId=video_id)
+    video_list = [item[u"id"][u"videoId"] for item in feed[u"items"]]  # pragma: no branch
+
+    # List all the related videos
+    results = list(gdata.videos(video_list, multi_channel=True))
+    if u"nextPageToken" in feed:  # pragma: no branch
+        next_item = Listitem.next_page(video_id=video_id, pagetoken=feed[u"nextPageToken"])
+        results.append(next_item)
+
+    return results
 
 
 @Resolver.register

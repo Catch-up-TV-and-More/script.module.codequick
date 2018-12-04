@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- 
+- Switch YouTube callback to function instead of class callbacks
 
 ## [0.9.7] - 2018-11-30
 ### Changed

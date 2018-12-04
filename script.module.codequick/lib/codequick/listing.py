@@ -806,7 +806,7 @@ class Listitem(object):
         item.art.global_thumb("videos.png")
         item.params["contentid"] = content_id
         item.params["enable_playlists"] = False if content_id.startswith("PL") else enable_playlists
-        item.set_callback(YTPlaylist)
+        item.set_callback(ytplaylist)
         return item
 
     def __repr__(self):
@@ -815,5 +815,5 @@ class Listitem(object):
 
 
 # Import callback functions required for listitem constructs
-from codequick.youtube import Playlist as YTPlaylist
+from codequick.youtube import playlist as ytplaylist
 from codequick.search import SavedSearches
