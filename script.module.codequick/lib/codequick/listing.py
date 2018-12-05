@@ -149,10 +149,6 @@ class Art(Params):
         >>> item.art["fanart"] = "http://www.example.ie/fanart.jpg"
         >>> item.art.local_thumb("thumbnail.png")
     """
-    def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
-        super(Art, self).__init__()
-        self._listitem = listitem
-
     def __setitem__(self, key, value):  # type: (str, str) -> None
         if value:
             self.raw_dict[key] = ensure_native_str(value)
@@ -186,7 +182,7 @@ class Art(Params):
         # So there is no neeed to use ensure_native_str
         self.raw_dict["thumb"] = global_image.format(image)
 
-    def _close(self, isfolder):
+    def _close(self, listitem, isfolder):  # type: (xbmcgui.ListItem, bool) -> None
         if fanart and "fanart" not in self.raw_dict:  # pragma: no branch
             self.raw_dict["fanart"] = fanart
         if "thumb" not in self.raw_dict:  # pragma: no branch
@@ -194,7 +190,7 @@ class Art(Params):
         if "icon" not in self.raw_dict:  # pragma: no branch
             self.raw_dict["icon"] = "DefaultFolder.png" if isfolder else "DefaultVideo.png"
 
-        self._listitem.setArt(self.raw_dict)
+        listitem.setArt(self.raw_dict)
 
 
 class Info(Params):
@@ -226,10 +222,6 @@ class Info(Params):
         >>> item.info['genre'] = 'Science Fiction'
         >>> item.info['size'] = 256816
     """
-    def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
-        super(Info, self).__init__()
-        self._listitem = listitem
-
     def __setitem__(self, key, value):
         if value is None or value == "":
             logger.debug("Ignoring empty infolable: '%s'", key)
@@ -312,29 +304,25 @@ class Info(Params):
 
         return duration
 
-    def _close(self, content_type):
+    def _close(self, listitem, content_type):  # type: (xbmcgui.ListItem, str) -> None
         raw_dict = self.raw_dict
         # Add label as plot if no plot is found
         if "plot" not in raw_dict:  # pragma: no branch
             raw_dict["plot"] = raw_dict["title"]
 
-        self._listitem.setInfo(content_type, raw_dict)
+        listitem.setInfo(content_type, raw_dict)
 
 
 class Property(Params):
-    def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
-        super(Property, self).__init__()
-        self._listitem = listitem
-
     def __setitem__(self, key, value):  # type: (str, str) -> None
         if value:
             self.raw_dict[key] = ensure_unicode(value)
         else:
             logger.debug("Ignoring empty property: '%s'", key)
 
-    def _close(self):
+    def _close(self, listitem):  # type: (xbmcgui.ListItem) -> None
         for key, value in self.raw_dict.items():
-            self._listitem.setProperty(key, value)
+            listitem.setProperty(key, value)
 
 
 class Stream(Params):
@@ -360,11 +348,6 @@ class Stream(Params):
         >>> item.stream['video_codec'] = 'h264'
         >>> item.stream['audio_codec'] = 'aac'
     """
-
-    def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
-        super(Stream, self).__init__()
-        self._listitem = listitem
-
     def __setitem__(self, key, value):
         if not value:
             logger.debug("Ignoring empty stream detail value for: '%s'", key)
@@ -419,7 +402,7 @@ class Stream(Params):
         elif self.raw_dict["height"] >= 720:
             self.raw_dict["aspect"] = 1.78
 
-    def _close(self):
+    def _close(self, listitem):  # type: (xbmcgui.ListItem) -> None
         video = {}
         subtitle = {}
         audio = {"channels": 2}
@@ -436,11 +419,11 @@ class Stream(Params):
                 raise KeyError("unknown stream detail key: '{}'".format(key))
 
         # Now we are ready to send the stream info to kodi
-        self._listitem.addStreamInfo("audio", audio)
+        listitem.addStreamInfo("audio", audio)
         if video:
-            self._listitem.addStreamInfo("video", video)
+            listitem.addStreamInfo("video", video)
         if subtitle:
-            self._listitem.addStreamInfo("subtitle", subtitle)
+            listitem.addStreamInfo("subtitle", subtitle)
 
 
 class Context(list):
@@ -455,11 +438,6 @@ class Context(list):
 
                  http://kodi.wiki/view/List_of_Built_In_Functions
     """
-
-    def __init__(self, listitem):  # type: (xbmcgui.ListItem) -> None
-        super(Context, self).__init__()
-        self._listitem = listitem
-
     def related(self, callback, *args, **kwargs):
         """
         Convenient method to add a "Related Videos" context menu item.
@@ -506,9 +484,9 @@ class Context(list):
         command = "XBMC.RunPlugin(%s)" % support.build_path(callback, args, kwargs)
         self.append((label, command))
 
-    def _close(self):
+    def _close(self, listitem):  # type: (xbmcgui.ListItem) -> None
         if self:
-            self._listitem.addContextMenuItems(self)
+            listitem.addContextMenuItems(self)
 
 
 class Listitem(object):
@@ -517,37 +495,48 @@ class Listitem(object):
 
     :param str content_type: [opt] Type of content been listed. e.g. "video", "music", "pictures".
     """
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["label"] = self.label
+        del state["listitem"]
+        return state
+
+    def __setstate__(self, state):
+        label = state.pop("label")
+        self.__dict__.update(state)
+        self.listitem = xbmcgui.ListItem()
+        self.label = label
 
     def __init__(self, content_type="video"):
         self._content_type = content_type
         self._args = None
         self.path = ""
 
-        #: The underlining kodi listitem object, for advanced use.
-        self.listitem = listitem = xbmcgui.ListItem()
+        # The underlining kodi listitem object, for advanced use.
+        self.listitem = xbmcgui.ListItem()
 
         #: List of paths to subtitle files.
         self.subtitles = []
 
-        self.info = Info(listitem)
+        self.info = Info()
         """
         Dictionary like object for adding "infoLabels".
         See :class:`listing.Info<codequick.listing.Info>` for more details.
         """
 
-        self.art = Art(listitem)
+        self.art = Art()
         """
         Dictionary like object for adding "listitem art".
         See :class:`listing.Art<codequick.listing.Art>` for more details.
         """
 
-        self.stream = Stream(listitem)
+        self.stream = Stream()
         """
         Dictionary like object for adding "stream details".
         See :class:`listing.Stream<codequick.listing.Stream>` for more details.
         """
 
-        self.context = Context(listitem)
+        self.context = Context()
         """
         List object for "context menu" items.
         See :class:`listing.Context<codequick.listing.Context>` for more details.
@@ -562,7 +551,7 @@ class Listitem(object):
             >>> item.params['videoid'] = 'kqmdIV_gBfo'
         """
 
-        self.property = Property(listitem)
+        self.property = Property()
         """
         Dictionary like object that allows you to add "listitem properties". e.g. "StartOffset".
 
@@ -641,7 +630,7 @@ class Listitem(object):
             self.context.append(("$LOCALIZE[13350]", "XBMC.ActivateWindow(videoplaylist)"))
 
             # Close video related datasets
-            self.stream._close()
+            self.stream._close(listitem)
 
         # Set label to UNKNOWN if unset
         if not self.label:  # pragma: no branch
@@ -649,10 +638,10 @@ class Listitem(object):
 
         # Close common datasets
         listitem.setPath(path)
-        self.property._close()
-        self.context._close()
-        self.info._close(self._content_type)
-        self.art._close(isfolder)
+        self.property._close(listitem)
+        self.context._close(listitem)
+        self.info._close(listitem, self._content_type)
+        self.art._close(listitem, isfolder)
 
         # Return a tuple compatible with 'xbmcplugin.addDirectoryItems'
         return path, listitem, isfolder

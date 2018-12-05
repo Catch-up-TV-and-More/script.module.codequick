@@ -104,7 +104,18 @@ class Callback(object):
     :ivar Script parent: The parent class that will handle the response from callback.
     :ivar str path: The route path to function.
     """
-    __slots__ = ("_parent", "_func", "path", "is_playable", "is_folder")
+    __slots__ = ("parent", "func", "path", "is_playable", "is_folder")
+
+    def __getstate__(self):
+        return self.path
+
+    def __setstate__(self, state):
+        obj = registered_routes[state]
+        self.is_playable = obj.is_playable
+        self.is_folder = obj.is_folder
+        self.parent = obj.parent
+        self.func = obj.func
+        self.path = obj.path
 
     def __eq__(self, other):
         return self.path == other.path
@@ -118,16 +129,16 @@ class Callback(object):
         registered_routes[path] = self
         self.is_playable = parent.is_playable
         self.is_folder = parent.is_folder
-        self._parent = parent
-        self._func = callback
+        self.parent = parent
+        self.func = callback
         self.path = path
 
     def __call__(self, *args, **kwargs):
-        return self._func(*args, **kwargs)
+        return self.func(*args, **kwargs)
 
     def execute(self, callback_params):
-        parent_ins = self._parent()
-        results = self._func(parent_ins, **callback_params)
+        parent_ins = self.parent()
+        results = self.func(parent_ins, **callback_params)
 
         if hasattr(parent_ins, "_process_results"):
             # noinspection PyProtectedMember
@@ -142,10 +153,10 @@ class Callback(object):
     def arg_names(self):  # type: () -> list
         """Return a list of argument names, positional and keyword arguments."""
         if PY3:
-            return inspect.getfullargspec(self._func).args
+            return inspect.getfullargspec(self.func).args
         else:
             # noinspection PyDeprecation
-            return inspect.getargspec(self._func).args
+            return inspect.getargspec(self.func).args
 
     def test(self, *args, **kwargs):
         """
@@ -177,11 +188,11 @@ class Callback(object):
             params.update(kwargs)
 
         # Instantiate the parent class
-        parent_ins = self._parent()
+        parent_ins = self.parent()
 
         try:
             # Now we are ready to call the callback function that we want to test
-            results = self._func(parent_ins, *args, **kwargs)
+            results = self.func(parent_ins, *args, **kwargs)
 
             # Ensure the we always have a list to work with
             if inspect.isgenerator(results):

@@ -6,10 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Rework how callbacks are handled
+- Improved handling of callbacks.
+- Listitem objects are now pickable.
 
 ### Removed
-- Support for class callbacks
+- Support for class callbacks.
 
 
 ## [0.9.7] - 2018-11-30
