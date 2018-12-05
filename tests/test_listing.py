@@ -61,8 +61,8 @@ class Params(unittest.TestCase):
 
 class Art(Params):
     def setUp(self):
-        listitem = xbmcgui.ListItem()
-        self.base = listing.Art(listitem)
+        self.listitem = xbmcgui.ListItem()
+        self.base = listing.Art()
 
     def test_empty_setter(self):
         self.base["test"] = ""
@@ -81,7 +81,7 @@ class Art(Params):
         self.assertNotIn("thumb", self.base)
         self.assertNotIn("fanart", self.base)
         self.assertNotIn("icon", self.base)
-        self.base._close(False)
+        self.base._close(self.listitem, False)
         self.assertIn("thumb", self.base)
         self.assertIn("fanart", self.base)
         self.assertIn("icon", self.base)
@@ -91,15 +91,15 @@ class Art(Params):
         self.base["fanart"] = ""
         self.base["thumb"] = ""
         self.base["icon"] = ""
-        self.base._close(False)
+        self.base._close(self.listitem, False)
         self.assertIn("thumb", self.base)
         self.assertIn("fanart", self.base)
 
 
 class Info(Params):
     def setUp(self):
-        listitem = xbmcgui.ListItem()
-        self.base = listing.Info(listitem)
+        self.listitem = xbmcgui.ListItem()
+        self.base = listing.Info()
 
     def test_empty_setter(self):
         self.base["test"] = ""
@@ -164,17 +164,17 @@ class Info(Params):
 
     def test_close(self):
         self.base["plot"] = "plot"
-        self.base._close("video")
+        self.base._close(self.listitem, "video")
 
 
 class Property(Params):
     def setUp(self):
-        listitem = xbmcgui.ListItem()
-        self.base = listing.Property(listitem)
+        self.listitem = xbmcgui.ListItem()
+        self.base = listing.Property()
 
     def test_close(self):
         self.base["StartOffset"] = "256.4"
-        self.base._close()
+        self.base._close(self.listitem)
 
     def test_empty_setter(self):
         self.base["test"] = ""
@@ -183,8 +183,8 @@ class Property(Params):
 
 class Stream(Params):
     def setUp(self):
-        listitem = xbmcgui.ListItem()
-        self.base = listing.Stream(listitem)
+        self.listitem = xbmcgui.ListItem()
+        self.base = listing.Stream()
 
     def test_empty_setter(self):
         self.base["test"] = ""
@@ -255,18 +255,18 @@ class Stream(Params):
         self.base["video_codec"] = "h265"
         self.base["audio_language"] = "en"
         self.base["subtitle_language"] = "en"
-        self.base._close()
+        self.base._close(self.listitem)
 
     def test_close_invalid(self):
         self.base["subtitle_languages"] = "en"
         with self.assertRaises(KeyError):
-            self.base._close()
+            self.base._close(self.listitem)
 
 
 class Context(unittest.TestCase):
     def setUp(self):
-        listitem = xbmcgui.ListItem()
-        self.base = listing.Context(listitem)
+        self.listitem = xbmcgui.ListItem()
+        self.base = listing.Context()
         self.org_routes = support.registered_routes.copy()
 
         # noinspection PyUnusedLocal
@@ -348,7 +348,7 @@ class Context(unittest.TestCase):
 
     def test_close(self):
         self.base.related(self.test_callback)
-        self.base._close()
+        self.base._close(self.listitem)
 
 
 class TestListitem(unittest.TestCase):
