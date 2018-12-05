@@ -200,6 +200,15 @@ class Callback(object):
             reset_session()
 
 
+def reset_session():
+    """Reset Session data, required when setting reuselanguageinvoker to true"""
+    globals()["selector"] = "root"
+    kodi_logger.debug_msgs = []
+    registered_delayed[:] = []
+    auto_sort.clear()
+    params.clear()
+
+
 def get_callback(path=None):
     """
     Return the given route callback.
@@ -297,15 +306,6 @@ def run_delayed():
 
         # Log execution time of callbacks
         logger.debug("Callbacks Execution Time: %ims", (time.time() - start_time) * 1000)
-
-
-def reset_session():
-    """Reset Session data, required when setting reuselanguageinvoker to true"""
-    globals()["selector"] = "root"
-    kodi_logger.debug_msgs = []
-    registered_delayed[:] = []
-    auto_sort.clear()
-    params.clear()
 
 
 def build_path(callback=None, args=None, query=None, **extra_query):
