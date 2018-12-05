@@ -153,8 +153,8 @@ class Callback(object):
         Parent argument will be auto instantiated and passed to callback.
         This basically acts as a constructor to callback.
 
-        Test specific Keyword args:
-        execute_delayed: Execute any registered delayed callbacks.
+        You can pass an optional keyword only argument, 'execute_delayed'
+        Set to true to execute any registered delayed callbacks.
 
         :param args: Positional arguments to pass to callback.
         :param kwargs: Keyword arguments to pass to callback.
