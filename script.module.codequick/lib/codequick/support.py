@@ -269,16 +269,14 @@ def run():
     # Reset Session data
     reset_session()
 
-    # Fetch params pass in by kodi
-    callback_params = parse_args()
-    logger.debug("Callback parameters: '%s'", callback_params)
-
     try:
-        # Fetch the controling class and callback function/method
+        # Fetch params pass in by kodi
+        callback_params = parse_args()
+        logger.debug("Callback parameters: '%s'", callback_params)
         route = get_callback()
-        execute_time = time.time()
 
         # Execute callback
+        execute_time = time.time()
         route.execute(callback_params)
 
     except Exception as e:
