@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Improved handling of callbacks.
-- Listitem objects are now pickable.
+- Listitem objects are now fully pickable.
+
+### Added
+- Ability to get and set listitem params as attributes, e.g. item.info.genre = "Science Fiction".
 
 ### Removed
 - Support for class callbacks.

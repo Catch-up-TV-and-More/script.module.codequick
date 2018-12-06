@@ -95,12 +95,21 @@ SEARCH = 137
 
 
 class Params(MutableMapping):
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __init__(self):
-        self.raw_dict = {}
+        self.__dict__["raw_dict"] = {}
 
     def __getitem__(self, key):
         value = self.raw_dict[key]
         return value.decode("utf8") if isinstance(value, bytes) else value
+
+    def __getattr__(self, name):
+        if name in self.raw_dict:
+            return self[name]
+        else:
+            raise AttributeError("'{0}' object has no attribute '{1}'".format(self.__class__.__name__, name))
 
     def __setitem__(self, key, value):
         if isinstance(value, bytes):
@@ -108,8 +117,17 @@ class Params(MutableMapping):
         else:
             self.raw_dict[key] = value
 
+    def __setattr__(self, name, value):
+        self[name] = value
+
     def __delitem__(self, key):  # type: (str) -> None
         del self.raw_dict[key]
+
+    def __delattr__(self, name):
+        if name in self.raw_dict:
+            del self.raw_dict[name]
+        else:
+            raise AttributeError("'{0}' object has no attribute '{1}'".format(self.__class__.__name__, name))
 
     def __contains__(self, key):  # type: (str) -> bool
         return key in self.raw_dict
@@ -145,7 +163,7 @@ class Art(Params):
 
     :example:
         >>> item = Listitem()
-        >>> item.art["icon"] = "http://www.example.ie/icon.png"
+        >>> item.art.icon = "http://www.example.ie/icon.png"
         >>> item.art["fanart"] = "http://www.example.ie/fanart.jpg"
         >>> item.art.local_thumb("thumbnail.png")
     """
@@ -219,8 +237,8 @@ class Info(Params):
 
     :examples:
         >>> item = Listitem()
-        >>> item.info['genre'] = 'Science Fiction'
-        >>> item.info['size'] = 256816
+        >>> item.info.genre = "Science Fiction"
+        >>> item.info["size"] = 256816
     """
     def __setitem__(self, key, value):
         if value is None or value == "":
@@ -345,8 +363,8 @@ class Stream(Params):
 
     :example:
         >>> item = Listitem()
-        >>> item.stream['video_codec'] = 'h264'
-        >>> item.stream['audio_codec'] = 'aac'
+        >>> item.stream.video_codec = "h264"
+        >>> item.stream["audio_codec"] = "aac"
     """
     def __setitem__(self, key, value):
         if not value:
