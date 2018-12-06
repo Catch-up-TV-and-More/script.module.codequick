@@ -292,7 +292,7 @@ def run():
 
         # Log the error in both the gui and the kodi log file
         dialog = xbmcgui.Dialog()
-        dialog.notification(e.__class__.__name__, msg, addon_data.getAddonInfo("icon"))
+        dialog.notification(e.__class__.__name__, msg, xbmcgui.NOTIFICATION_ERROR)
         logger.critical(msg, exc_info=1)
 
     else:
