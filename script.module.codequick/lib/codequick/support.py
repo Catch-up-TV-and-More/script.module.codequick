@@ -136,14 +136,6 @@ class Callback(object):
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
 
-    def execute(self, callback_params):
-        parent_ins = self.parent()
-        results = self.func(parent_ins, **callback_params)
-
-        if hasattr(parent_ins, "_process_results"):
-            # noinspection PyProtectedMember
-            parent_ins._process_results(results)
-
     def args_to_kwargs(self, args, kwargs):  # type: (tuple, dict) -> None
         """Convert positional arguments to keyword arguments and merge into callback parameters."""
         callback_args = self.arg_names()[1:]
@@ -277,7 +269,7 @@ def run():
 
         # Execute callback
         execute_time = time.time()
-        route.execute(callback_params)
+        route.parent._execute(route, callback_params)
 
     except Exception as e:
         try:

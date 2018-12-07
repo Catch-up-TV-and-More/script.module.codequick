@@ -160,6 +160,11 @@ class Script(object):
         self.handle = support.handle
 
     @classmethod
+    def _execute(cls, callback, callback_params):
+        """Handle execution of script callback."""
+        callback.func(cls(), **callback_params)
+
+    @classmethod
     def register(cls, func):
         """
         Decorator used to register callback functions.

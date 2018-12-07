@@ -12,14 +12,14 @@ import xbmcplugin
 
 # Package imports
 from codequick.script import Script
-from codequick.support import logger_id, auto_sort
+import codequick.support as support
 from codequick.utils import ensure_native_str
 
 __all__ = ["Route", "validate_listitems"]
 _UNSET = object()
 
 # Logger specific to this module
-logger = logging.getLogger("%s.route" % logger_id)
+logger = logging.getLogger("%s.route" % support.logger_id)
 
 # Localized string Constants
 SELECT_PLAYBACK_ITEM = 25006
@@ -27,25 +27,102 @@ NO_DATA = 33077
 
 
 def validate_listitems(raw_listitems):
-    """Check if listitems are valid"""
+    """Check if listitems are valid."""
 
     # Convert a generator of listitem into a list of listitems
     if inspect.isgenerator(raw_listitems):
         raw_listitems = list(raw_listitems)
+
     # Silently ignore False values
     elif raw_listitems is False:
         return False
 
     if raw_listitems:
+        # Check that we have valid listitems
         if isinstance(raw_listitems, (list, tuple)):
-            if len(raw_listitems) == 1 and raw_listitems[0] is False:
-                return False
-            else:
-                return raw_listitems
+            # Check for an explicite False return value
+            return False if len(raw_listitems) == 1 and raw_listitems[0] is False else raw_listitems
         else:
-            raise ValueError("Unexpected return object: {}".format(type(raw_listitems)))
+            raise ValueError("Unexpected return object: {}:{}".format(type(raw_listitems), raw_listitems))
     else:
         raise RuntimeError("No items found")
+
+
+def guess_content_type(mediatypes):  # type: (defaultdict) -> str
+    """Guess the content type based on the mediatype set on the listitems."""
+    # See if we can guess the content_type based on the mediatypes from the listitem
+    if len(mediatypes) > 1:
+        from operator import itemgetter
+        # Sort mediatypes by there count, and return the highest count mediatype
+        mediatype = sorted(mediatypes.items(), key=itemgetter(1))[-1][0]
+    else:
+        mediatype = mediatypes.popitem()[0]
+
+    # Convert mediatype to a content_type, not all mediatypes can be converted directly
+    if mediatype in ("video", "movie", "tvshow", "episode", "musicvideo", "song", "album", "artist"):
+        return mediatype + "s"
+
+
+def build_sortmethods(manualsort, autosort):  # type: (list, list) -> list
+    """Merge manual & auto sortmethod together."""
+    if autosort:
+        # Add unsorted sort method if not sorted by date and no manually set sortmethods are given
+        if not (manualsort or xbmcplugin.SORT_METHOD_DATE in autosort):
+            manualsort.append(xbmcplugin.SORT_METHOD_UNSORTED)
+
+        # Keep the order of the manually set sort methods
+        # Only sort the auto sort methods
+        for method in sorted(autosort):
+            if method not in manualsort:
+                manualsort.append(method)
+
+    # If no sortmethods are given then set sort mehtod to unsorted
+    return manualsort if manualsort else [xbmcplugin.SORT_METHOD_UNSORTED]
+
+
+def send_to_kodi(handle, session_data):  # type: (int, dict) -> None
+    """Send the session data to kodi."""
+    # Guess the contenty type
+    if session_data["content_type"] == -1:
+        kodi_listitems = []
+        folder_counter = 0.0
+        mediatypes = defaultdict(int)
+        for custom_listitem in session_data["listitems"]:
+            # Build the kodi listitem
+            listitem_tuple = custom_listitem._close()
+            kodi_listitems.append(listitem_tuple)
+
+            # Track the mediatypes used
+            if "mediatype" in custom_listitem.info:
+                mediatypes[custom_listitem.info["mediatype"]] += 1
+
+            # Track if listitem is a folder
+            if listitem_tuple[2]:
+                folder_counter += 1
+
+        if mediatypes:
+            # Guess content type based on set mediatypes
+            session_data["content_type"] = guess_content_type(mediatypes)
+        else:
+            # Set content type based on type of content been listed
+            isfolder = folder_counter > (len(kodi_listitems) / 2)
+            session_data["content_type"] = "files" if isfolder else "videos"
+    else:
+        # Just build the kodi listitem without tracking anything
+        kodi_listitems = [custom_listitem._close() for custom_listitem in session_data["listitems"]]
+
+    # Add the sortmethods
+    addsort = xbmcplugin.addSortMethod
+    for sort_method in session_data["sortmethods"]:
+        addsort(handle, sort_method)
+
+    # Set category if we have one
+    if session_data["category"]:
+        xbmcplugin.setPluginCategory(handle, session_data["category"])
+
+    xbmcplugin.setContent(handle, session_data["content_type"])
+    success = xbmcplugin.addDirectoryItems(handle, kodi_listitems, len(kodi_listitems))
+    xbmcplugin.endOfDirectory(handle, success, session_data["update_listing"], session_data["cache_to_disc"])
 
 
 class Route(Script):
@@ -89,89 +166,6 @@ class Route(Script):
         self.content_type = _UNSET
         self.autosort = True
 
-    def _process_results(self, raw_listitems):
-        """Handle the processing of the listitems."""
-        raw_listitems = validate_listitems(raw_listitems)
-        if raw_listitems is False:
-            xbmcplugin.endOfDirectory(self.handle, False)
-            return None
-
-        # Create a new list containing tuples, consisting of path, listitem, isfolder.
-        listitems = []
-        folder_counter = 0.0
-        mediatypes = defaultdict(int)
-        for listitem in raw_listitems:
-            if listitem:  # pragma: no branch
-                # noinspection PyProtectedMember
-                listitem_tuple = listitem._close()
-                listitems.append(listitem_tuple)
-                if listitem_tuple[2]:  # pragma: no branch
-                    folder_counter += 1
-
-                if "mediatype" in listitem.info:
-                    mediatypes[listitem.info["mediatype"]] += 1
-
-        # Guess if this directory listing is primarily a folder or video listing.
-        # Listings will be considered to be a folder if more that half the listitems are folder items.
-        isfolder = folder_counter > (len(listitems) / 2)
-
-        # Sets the category for skins to display modes.
-        xbmcplugin.setPluginCategory(self.handle, ensure_native_str(self.category))
-
-        if self.content_type is not None:
-            self.__content_type("files" if isfolder else "videos", mediatypes)
-
-        # Add sort methods only if not a folder(Video listing)
-        if not isfolder:
-            self.__add_sort_methods(self._manual_sort)
-
-        # Pass the listitems and relevant data to kodi
-        success = xbmcplugin.addDirectoryItems(self.handle, listitems, len(listitems))
-        xbmcplugin.endOfDirectory(self.handle, success, self.update_listing, self.cache_to_disc)
-
-    def __content_type(self, default_type, mediatypes):  # type: (str, defaultdict) -> None
-        """Configure plugin properties, content, category and sort methods."""
-
-        # See if we can guess the content_type based on the mediatypes from the listitem
-        if mediatypes and self.content_type is _UNSET:
-            if len(mediatypes) > 1:
-                from operator import itemgetter
-                # Sort mediatypes by there count, and return the highest count mediatype
-                mediatype = sorted(mediatypes.items(), key=itemgetter(1))[-1][0]
-            else:
-                mediatype = mediatypes.popitem()[0]
-
-            # Convert mediatype to a content_type, not all mediatypes can be converted directly
-            if mediatype in ("video", "movie", "tvshow", "episode", "musicvideo", "song", "album", "artist"):
-                self.content_type = mediatype + "s"
-
-        # Set the add-on content type
-        content_type = self.content_type if self.content_type and self.content_type is not _UNSET else default_type
-        xbmcplugin.setContent(self.handle, content_type)
-        logger.debug("Content-type: %s", content_type)
-
-    def __add_sort_methods(self, sortmethods):  # type: (list) -> None
-        """Add sort methods to kodi."""
-        _addSortMethod = xbmcplugin.addSortMethod
-
-        if self.autosort:
-            # Add unsorted sort method if not sorted by date and no manually set sortmethods are given
-            if auto_sort and not (sortmethods or xbmcplugin.SORT_METHOD_DATE in auto_sort):
-                sortmethods.append(xbmcplugin.SORT_METHOD_UNSORTED)
-
-            # Keep the order of the manually set sort methods
-            # Only sort the auto sort methods
-            for method in sorted(auto_sort):
-                if method not in sortmethods:
-                    sortmethods.append(method)
-
-        if sortmethods:
-            for sortMethod in sortmethods:
-                _addSortMethod(self.handle, sortMethod)
-        else:
-            # If no sortmethods are given then set sort mehtod to unsorted
-            _addSortMethod(self.handle, xbmcplugin.SORT_METHOD_UNSORTED)
-
     def add_sort_methods(self, *methods, **kwargs):
         """
         Add sorting method(s).
@@ -193,3 +187,30 @@ class Route(Script):
         # Can't use sets here as sets don't keep order
         for method in methods:
             self._manual_sort.append(method)
+
+    def _process_results(self, raw_listitems):  # type: (list) -> dict
+        """Process the results and return a cacheable dict of session data."""
+        return {"listitems": filter(None, raw_listitems),
+                "category": ensure_native_str(self.category),
+                "update_listing": self.update_listing, "cache_to_disc": self.cache_to_disc,
+                "sortmethods": build_sortmethods(self._manual_sort, support.auto_sort if self.autosort else None),
+                "content_type": self.content_type if self.content_type is not _UNSET else -1}
+
+    @classmethod
+    def _execute(cls, callback, callback_params):  # type: (support.Callback, dict) -> None
+        """
+        Check if results of callback are cached the return cache results,
+        else execute the callback and cache the results.
+        """
+        plugin = cls()
+        results = callback(plugin, **callback_params)
+        raw_listitems = validate_listitems(results)
+
+        # Gracefully exit if callback explicitly return False
+        if raw_listitems is False:
+            xbmcplugin.endOfDirectory(plugin.handle, False)
+        else:
+            # Process the results and send results to kodi
+            session_data = plugin._process_results(raw_listitems)
+            logger.info("Session Data: %s", session_data)
+            send_to_kodi(support.handle, session_data)

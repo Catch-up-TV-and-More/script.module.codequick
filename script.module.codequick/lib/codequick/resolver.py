@@ -97,6 +97,13 @@ class Resolver(Script):
         super(Resolver, self).__init__()
         self.playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 
+    @classmethod
+    def _execute(cls, callback, callback_params):
+        """Handle execution of resolver callback."""
+        plugin = cls()
+        results = callback.func(plugin, **callback_params)
+        plugin._process_results(results)
+
     def create_loopback(self, url, **next_params):  # Undocumented
         """
         Create a playlist where the second item loops back to add-on to load next video.
