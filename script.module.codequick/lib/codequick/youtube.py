@@ -8,12 +8,11 @@ import json
 import os
 
 # Package imports
-from codequick.script import Script
 from codequick.route import Route
 from codequick.utils import bold
 from codequick.listing import Listitem
 from codequick.resolver import Resolver
-from codequick.support import logger_id
+from codequick.support import logger_id, Base
 import urlquick
 
 # Logger specific to this module
@@ -356,7 +355,7 @@ class APIControl(object):
     def __init__(self):
         super(APIControl, self).__init__()
         self.db = Database()
-        Script.register_delayed(self.db.cleanup)
+        Base.register_delayed(self.db.cleanup)
         self.api = API()
 
     def valid_playlistid(self, contentid):
@@ -499,7 +498,7 @@ class APIControl(object):
         """
         # Check that the quality setting is set to HD or greater
         try:
-            ishd = Script.setting.get_int("video_quality", addon_id="script.module.youtube.dl")
+            ishd = Base.setting.get_int("video_quality", addon_id="script.module.youtube.dl")
         except RuntimeError:  # pragma: no cover
             ishd = True
 

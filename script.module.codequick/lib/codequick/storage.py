@@ -14,7 +14,7 @@ except ImportError:  # pragma: no cover
     import pickle
 
 # Package imports
-from codequick.script import Script
+from codequick.support import Base
 from codequick.utils import ensure_unicode, PY3
 
 if PY3:
@@ -27,7 +27,7 @@ else:
 __all__ = ["PersistentDict", "PersistentList"]
 
 # The addon profile directory
-profile_dir = Script.get_info("profile")
+profile_dir = Base.get_info("profile")
 
 
 class _PersistentBase(object):

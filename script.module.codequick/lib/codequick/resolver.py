@@ -13,7 +13,7 @@ import xbmcgui
 import xbmc
 
 # Package imports
-from codequick.script import Script
+from codequick import support
 from codequick.support import build_path, logger_id
 from codequick.utils import unicode_type, ensure_unicode
 
@@ -56,7 +56,7 @@ VALID_YOUTUBE_URL = r"""(?x)^
 $"""
 
 
-class Resolver(Script):
+class Resolver(support.Base):
     """
     This class is used to create "Resolver" callbacks. Resolver callbacks are callbacks that
     return playable video URL's which Kodi can play.
@@ -93,16 +93,13 @@ class Resolver(Script):
     # Change listitem type to 'player'
     is_playable = True
 
-    def __init__(self):
+    def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
         super(Resolver, self).__init__()
         self.playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 
-    @classmethod
-    def _execute(cls, callback, callback_params):
-        """Handle execution of resolver callback."""
-        plugin = cls()
-        results = callback.func(plugin, **callback_params)
-        plugin._process_results(results)
+        # Handle execution of resolver callback.
+        results = callback.func(self, **callback_params)
+        self._process_results(results)
 
     def create_loopback(self, url, **next_params):  # Undocumented
         """

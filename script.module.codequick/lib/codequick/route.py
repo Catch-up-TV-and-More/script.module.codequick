@@ -11,7 +11,6 @@ import re
 import xbmcplugin
 
 # Package imports
-from codequick.script import Script
 import codequick.support as support
 from codequick.utils import ensure_native_str
 
@@ -125,7 +124,7 @@ def send_to_kodi(handle, session_data):  # type: (int, dict) -> None
     xbmcplugin.endOfDirectory(handle, success, session_data["update_listing"], session_data["cache_to_disc"])
 
 
-class Route(Script):
+class Route(support.Base):
     """
     This class is used to create "Route" callbacks. “Route" callbacks, are callbacks that
     return "listitems" which will show up as folders in Kodi.
@@ -157,7 +156,7 @@ class Route(Script):
     # Change listitem type to 'folder'
     is_folder = True
 
-    def __init__(self):
+    def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
         super(Route, self).__init__()
         self.update_listing = self.params.get(u"_updatelisting_", False)
         self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
@@ -165,6 +164,20 @@ class Route(Script):
         self._manual_sort = list()
         self.content_type = _UNSET
         self.autosort = True
+
+        # Check if results of callback are cached the return cache results,
+        # else execute the callback and cache the results.
+        results = callback(self, **callback_params)
+        raw_listitems = validate_listitems(results)
+
+        if raw_listitems is False:
+            # Gracefully exit if callback explicitly return False
+            xbmcplugin.endOfDirectory(self.handle, False)
+        else:
+            # Process the results and send results to kodi
+            session_data = self._process_results(raw_listitems)
+            logger.info("Session Data: %s", session_data)
+            send_to_kodi(support.handle, session_data)
 
     def add_sort_methods(self, *methods, **kwargs):
         """
@@ -195,22 +208,3 @@ class Route(Script):
                 "update_listing": self.update_listing, "cache_to_disc": self.cache_to_disc,
                 "sortmethods": build_sortmethods(self._manual_sort, support.auto_sort if self.autosort else None),
                 "content_type": self.content_type if self.content_type is not _UNSET else -1}
-
-    @classmethod
-    def _execute(cls, callback, callback_params):  # type: (support.Callback, dict) -> None
-        """
-        Check if results of callback are cached the return cache results,
-        else execute the callback and cache the results.
-        """
-        plugin = cls()
-        results = callback(plugin, **callback_params)
-        raw_listitems = validate_listitems(results)
-
-        # Gracefully exit if callback explicitly return False
-        if raw_listitems is False:
-            xbmcplugin.endOfDirectory(plugin.handle, False)
-        else:
-            # Process the results and send results to kodi
-            session_data = plugin._process_results(raw_listitems)
-            logger.info("Session Data: %s", session_data)
-            send_to_kodi(support.handle, session_data)

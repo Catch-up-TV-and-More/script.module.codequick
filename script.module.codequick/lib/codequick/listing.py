@@ -13,7 +13,7 @@ import xbmcgui
 
 # Package imports
 from codequick import support
-from codequick.script import Script
+from codequick.support import Base
 from codequick.utils import ensure_unicode, ensure_native_str, unicode_type, PY3, bold
 
 if PY3:
@@ -29,13 +29,13 @@ __all__ = ["Listitem"]
 logger = logging.getLogger("%s.listitem" % support.logger_id)
 
 # Listitem thumbnail locations
-local_image = ensure_native_str(os.path.join(Script.get_info("path"), u"resources", u"media", u"{}"))
-global_image = ensure_native_str(os.path.join(Script.get_info("path_global"), u"resources", u"media", u"{}"))
+local_image = ensure_native_str(os.path.join(Base.get_info("path"), u"resources", u"media", u"{}"))
+global_image = ensure_native_str(os.path.join(Base.get_info("path_global"), u"resources", u"media", u"{}"))
 
 # Prefetch fanart/icon for use later
-_fanart = Script.get_info("fanart")
+_fanart = Base.get_info("fanart")
 fanart = ensure_native_str(_fanart) if os.path.exists(_fanart) else None
-icon = ensure_native_str(Script.get_info("icon"))
+icon = ensure_native_str(Base.get_info("icon"))
 
 # Stream type map to ensure proper stream value types
 stream_type_map = {"duration": int,
@@ -470,7 +470,7 @@ class Context(list):
         if callback == support.get_callback():
             kwargs["_updatelisting_"] = True
 
-        related_videos_text = Script.localize(RELATED_VIDEOS)
+        related_videos_text = Base.localize(RELATED_VIDEOS)
         kwargs["_title_"] = related_videos_text
         self.container(callback, related_videos_text, *args, **kwargs)
 
@@ -736,8 +736,8 @@ class Listitem(object):
 
         # Create listitem instance
         item = cls()
-        label = u"%s %i" % (Script.localize(NEXT_PAGE), kwargs["_nextpagecount_"])
-        item.info["plot"] = Script.localize(NEXT_PAGE_PLOT)
+        label = u"%s %i" % (Base.localize(NEXT_PAGE), kwargs["_nextpagecount_"])
+        item.info["plot"] = Base.localize(NEXT_PAGE_PLOT)
         item.label = bold(label)
         item.art.global_thumb("next.png")
         item.set_callback(callback, *args, **kwargs)
@@ -756,8 +756,8 @@ class Listitem(object):
         """
         # Create listitem instance
         item = cls()
-        item.label = bold(Script.localize(RECENT_VIDEOS))
-        item.info["plot"] = Script.localize(RECENT_VIDEOS_PLOT)
+        item.label = bold(Base.localize(RECENT_VIDEOS))
+        item.info["plot"] = Base.localize(RECENT_VIDEOS_PLOT)
         item.art.global_thumb("recent.png")
         item.set_callback(callback, *args, **kwargs)
         return item
@@ -786,9 +786,9 @@ class Listitem(object):
             callback.args_to_kwargs(args, kwargs)
 
         item = cls()
-        item.label = bold(Script.localize(SEARCH))
+        item.label = bold(Base.localize(SEARCH))
         item.art.global_thumb("search.png")
-        item.info["plot"] = Script.localize(SEARCH_PLOT)
+        item.info["plot"] = Base.localize(SEARCH_PLOT)
         item.set_callback(saved_searches, _route=callback.path, first_load=True, **kwargs)
         return item
 
@@ -812,7 +812,7 @@ class Listitem(object):
         """
         # Youtube exists, Creating listitem link
         item = cls()
-        item.label = label if label else bold(Script.localize(ALLVIDEOS))
+        item.label = label if label else bold(Base.localize(ALLVIDEOS))
         item.art.global_thumb("videos.png")
         item.params["contentid"] = content_id
         item.params["enable_playlists"] = False if content_id.startswith("PL") else enable_playlists
