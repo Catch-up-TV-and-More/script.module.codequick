@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 # Standard Library Imports
 from hashlib import sha1
+import sqlite3
 import time
 import sys
 import os
@@ -20,11 +21,12 @@ from codequick.utils import ensure_unicode, PY3
 if PY3:
     # noinspection PyUnresolvedReferences, PyCompatibility
     from collections.abc import MutableMapping, MutableSequence
+    buffer = bytes
 else:
     # noinspection PyUnresolvedReferences, PyCompatibility
     from collections import MutableMapping, MutableSequence
 
-__all__ = ["PersistentDict", "PersistentList"]
+__all__ = ["PersistentDict", "PersistentList", "Cache"]
 
 # The addon profile directory
 profile_dir = Base.get_info("profile")
@@ -238,3 +240,70 @@ class PersistentList(_PersistentBase, MutableSequence):
 
     def append(self, value):
         self._data.append((value, time.time()))
+
+
+class Cache(object):
+    """
+
+    :param str name: Filename of sqlite storage file.
+    """
+    def __init__(self, name):
+        # Filename is already a fullpath
+        if os.path.sep in name:
+            filepath = ensure_unicode(name)
+            data_dir = os.path.dirname(filepath)
+        else:
+            # Filename must be relative, joining profile directory with filename
+            filepath = os.path.join(profile_dir, ensure_unicode(name))
+            data_dir = profile_dir
+
+        # Create any missing data directory
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+
+        self.db = db = sqlite3.connect(filepath, timeout=1)
+        self.cur = cur = db.cursor()
+        db.isolation_level = None
+
+        # Create cache table
+        cur.execute("CREATE TABLE IF NOT EXISTS itemcache (key TEXT PRIMARY KEY, value BLOB, expires INTEGER)")
+        db.commit()
+
+    def execute(self, sqlquery, args):
+        self.cur.execute("BEGIN")
+        try:
+            self.cur.execute(sqlquery, args)
+        except Exception as e:  # pragma: no cover
+            self.db.rollback()
+            raise e
+        else:
+            self.db.commit()
+
+    def get_cache(self, key):
+        item = self.cur.execute("SELECT value, expires FROM itemcache WHERE key = ?", (key,)).fetchone()
+        if item is None:
+            raise KeyError(key)
+        else:
+            value, expired = item
+            if expired < time.time():  # Expired
+                self.del_cache(key)
+                raise KeyError(key)
+            else:
+                return pickle.loads(bytes(value))
+
+    def set_cache(self, key, value, ttl):
+        data = buffer(pickle.dumps(value))
+        self.execute("REPLACE INTO itemcache (key, value, expires) VALUES (?,?,?)", (key, data, time.time() + ttl))
+
+    def del_cache(self, key):
+        self.execute("DELETE FROM itemcache WHERE key = ?", (key,))
+
+    def close(self):
+        self.cur.close()
+        self.db.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()

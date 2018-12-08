@@ -11,6 +11,7 @@ import re
 import xbmcplugin
 
 # Package imports
+from codequick.storage import Cache
 import codequick.support as support
 from codequick.utils import ensure_native_str
 
@@ -158,25 +159,36 @@ class Route(support.Base):
 
     def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
         super(Route, self).__init__()
-        self.update_listing = self.params.get(u"_updatelisting_", False)
-        self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
-        self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)
-        self._manual_sort = list()
-        self.content_type = _UNSET
-        self.autosort = True
+        with Cache("cache.sqlite") as cache:
+            # Check if results of callback are cached and return so,
+            # else execute the callback and cache the results.
+            try:
+                session_data = cache.get_cache(support.session_id)
+                logger.info("Cache Hit: %s", support.session_id)
+            except KeyError:
+                logger.info("Cache Miss: %s", support.session_id)
+                self.update_listing = self.params.get(u"_updatelisting_", False)
+                self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
+                self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)
+                self.cache_ttl = 60 * 4  # 4 hours
+                self._manual_sort = list()
+                self.content_type = _UNSET
+                self.autosort = True
 
-        # Check if results of callback are cached the return cache results,
-        # else execute the callback and cache the results.
-        results = callback(self, **callback_params)
-        raw_listitems = validate_listitems(results)
+                # Execute callback
+                results = callback(self, **callback_params)
+                raw_listitems = validate_listitems(results)
 
-        if raw_listitems is False:
-            # Gracefully exit if callback explicitly return False
-            xbmcplugin.endOfDirectory(self.handle, False)
-        else:
-            # Process the results and send results to kodi
-            session_data = self._process_results(raw_listitems)
-            logger.info("Session Data: %s", session_data)
+                if raw_listitems is False:
+                    # Gracefully exit if callback explicitly return False
+                    xbmcplugin.endOfDirectory(self.handle, False)
+                    return
+                else:
+                    # Process the results and send results to kodi
+                    session_data = self._process_results(raw_listitems)
+                    cache.set_cache(support.session_id, session_data, self.cache_ttl*60)
+
+            # Send session data to kodi
             send_to_kodi(support.handle, session_data)
 
     def add_sort_methods(self, *methods, **kwargs):

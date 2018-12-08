@@ -31,7 +31,7 @@ EXCEPTED_STATUS = [u"public", u"unlisted"]
 class Database(object):
     def __init__(self):
         # Unfortunately with python 3, sqlite3.connect might fail if system local is 'c_type'(ascii)
-        self.db = db = sqlite3.connect(CACHEFILE, timeout=1)
+        self.db = db = sqlite3.connect(CACHEFILE, timeout=10)
 
         db.isolation_level = None
         db.row_factory = sqlite3.Row

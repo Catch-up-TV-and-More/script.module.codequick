@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Ability to get and set listitem params as attributes, e.g. item.info.genre = "Science Fiction".
+- Caching support
 
 ### Removed
 - Support for class callbacks.

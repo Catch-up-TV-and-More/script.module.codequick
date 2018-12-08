@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 # Standard Library Imports
+from hashlib import sha1
 import binascii
 import logging
 import inspect
@@ -40,6 +41,7 @@ selector = "root"
 auto_sort = set()
 params = {}
 handle = -1
+session_id = None
 
 
 class Settings(object):
@@ -545,9 +547,13 @@ def parse_args():
     :returns: Callback related params
     :rtype: dict
     """
+    global_vars = globals()
+    url = sys.argv[0] + sys.argv[2]
+    global_vars["session_id"] = sha1(url).hexdigest()
+
     _, _, route, raw_params, _ = urlparse.urlsplit(sys.argv[0] + sys.argv[2])
-    globals()["selector"] = route if len(route) > 1 else "root"
-    globals()["handle"] = int(sys.argv[1])
+    global_vars["selector"] = route if len(route) > 1 else "root"
+    global_vars["handle"] = int(sys.argv[1])
 
     logger.debug("Dispatching to route: '%s'", selector)
 
@@ -637,7 +643,7 @@ def run():
         logger.critical(msg, exc_info=1)
 
     else:
-        logger.debug("Route Execution Time: %ims", (time.time() - execute_time) * 1000)
+        logger.info("Route Execution Time: %ims", (time.time() - execute_time) * 1000)
         run_delayed()
 
 
