@@ -87,14 +87,14 @@ def send_to_kodi(handle, session_data):  # type: (int, dict) -> None
         kodi_listitems = []
         folder_counter = 0.0
         mediatypes = defaultdict(int)
-        for custom_listitem in session_data["listitems"]:
+        for item in session_data["listitems"]:
             # Build the kodi listitem
-            listitem_tuple = custom_listitem._close()
+            listitem_tuple = item.build()
             kodi_listitems.append(listitem_tuple)
 
             # Track the mediatypes used
-            if "mediatype" in custom_listitem.info:
-                mediatypes[custom_listitem.info["mediatype"]] += 1
+            if "mediatype" in item.info:
+                mediatypes[item.info["mediatype"]] += 1
 
             # Track if listitem is a folder
             if listitem_tuple[2]:
@@ -109,7 +109,7 @@ def send_to_kodi(handle, session_data):  # type: (int, dict) -> None
             session_data["content_type"] = "files" if isfolder else "videos"
     else:
         # Just build the kodi listitem without tracking anything
-        kodi_listitems = [custom_listitem._close() for custom_listitem in session_data["listitems"]]
+        kodi_listitems = [custom_listitem.build() for custom_listitem in session_data["listitems"]]
 
     # Add the sortmethods
     addsort = xbmcplugin.addSortMethod

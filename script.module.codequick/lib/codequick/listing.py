@@ -620,7 +620,7 @@ class Listitem(object):
             self.params.update(kwargs)
 
     # noinspection PyProtectedMember
-    def _close(self):
+    def build(self):
         callback = self.path
         listitem = self.listitem
         if isinstance(callback, support.Callback):
