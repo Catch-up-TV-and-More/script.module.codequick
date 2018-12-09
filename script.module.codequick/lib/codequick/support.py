@@ -191,6 +191,7 @@ class Base(object):
                     "http://www.example.com/video1.mkv")
 
         :param function func: The callback function to register.
+        :param kwargs: Keyword only arguments to pass to callback handler.
         :returns: A callback instance.
         :rtype: Callback
         """

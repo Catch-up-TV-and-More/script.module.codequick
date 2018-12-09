@@ -12,7 +12,7 @@ This module is used for the creation of “Route callbacks”.
         By default, cacheing is disabled unless a cache_ttl value greater than 0 is set.
         But this may change in the future.
 
-        .. note::  This parameter can only be set when registering a callback, see :meth:`codequick.Script.register`
+        .. note::  This parameter can only be set when registering a callback, See :meth:`codequick.Script.register`
 
     .. attribute:: sort_methods
         :annotation: = []
