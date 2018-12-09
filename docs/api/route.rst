@@ -3,19 +3,28 @@ Route
 This module is used for the creation of “Route callbacks”.
 
 .. autoclass:: codequick.Route()
-    :members: add_sort_methods
 
     .. attribute:: cache_ttl
         :annotation: = -1
 
         The time in minutes that the cache will be valid for, Value of -1 disables cacheing.
 
+        By default, cacheing is disabled unless a cache_ttl value greater than 0 is set.
+        But this may change in the future.
+
         .. note::  This parameter can only be set when registering a callback, see :meth:`codequick.Script.register`
+
+    .. attribute:: sort_methods
+        :annotation: = []
+
+        List of sorting methods for the media list.
 
     .. attribute:: autosort
         :annotation: = True
 
         Set to ``False`` to disable auto sortmethod selection.
+
+        By default, sortmethods are auto selected based on the set infolabels.
 
         .. note::  If autosort is disabled and no sortmethods are given, then SORT_METHOD_UNSORTED will be set.
 
@@ -30,11 +39,11 @@ This module is used for the creation of “Route callbacks”.
         The category name of the current list, defaults to the title of previously selected listitem.
 
     .. attribute:: content_type
-        :annotation: = None
+        :annotation: = unset
 
         The add-on’s "content type".
 
-        If not given, then the "content type" is based on the "mediatype" infolabel of the listitems.
+        If left unset, then the "content type" is based on the "mediatype" infolabel of the listitems.
         If the “mediatype” infolabel” was not set, then it defaults to “files/videos”, based on type of content.
 
         * "files" when listing folders.

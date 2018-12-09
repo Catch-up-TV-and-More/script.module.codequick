@@ -142,7 +142,7 @@ class Route(support.Base):
     :example:
         >>> from codequick import Route, Listitem
         >>>
-        >>> @Route.register
+        >>> @Route.register(cache_ttl=240)
         >>> def root(_):
         >>>     yield Listitem.from_dict("Extra videos", subfolder)
         >>>     yield Listitem.from_dict("Play video",
@@ -172,7 +172,7 @@ class Route(support.Base):
                 self.update_listing = self.params.get(u"_updatelisting_", False)
                 self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
                 self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)
-                self._manual_sort = list()
+                self.sort_methods = []
                 self.content_type = _UNSET
                 self.autosort = True
 
@@ -195,7 +195,7 @@ class Route(support.Base):
             # Send session data to kodi
             send_to_kodi(support.handle, session_data)
 
-    def add_sort_methods(self, *methods, **kwargs):
+    def add_sort_methods(self, *methods, **kwargs):  # Undocumented
         """
         Add sorting method(s).
 
@@ -215,12 +215,12 @@ class Route(support.Base):
 
         # Can't use sets here as sets don't keep order
         for method in methods:
-            self._manual_sort.append(method)
+            self.sort_methods.append(method)
 
     def _process_results(self, raw_listitems):  # type: (list) -> dict
         """Process the results and return a cacheable dict of session data."""
         return {"listitems": filter(None, raw_listitems),
                 "category": ensure_native_str(self.category),
                 "update_listing": self.update_listing, "cache_to_disc": self.cache_to_disc,
-                "sortmethods": build_sortmethods(self._manual_sort, support.auto_sort if self.autosort else None),
+                "sortmethods": build_sortmethods(self.sort_methods, support.auto_sort if self.autosort else None),
                 "content_type": self.content_type if self.content_type is not _UNSET else -1}
