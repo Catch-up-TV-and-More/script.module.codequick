@@ -184,7 +184,7 @@ class Base(object):
         self.handle = handle
 
     @classmethod
-    def register(cls, func):
+    def register(cls, func=None, **kwargs):
         """
         Decorator used to register callback functions.
 
@@ -192,7 +192,14 @@ class Base(object):
         :returns: A callback instance.
         :rtype: Callback
         """
-        return Callback(func, parent=cls)
+        if inspect.isfunction(func):
+            return Callback(func, parent=cls, data=kwargs)
+        elif func is None:
+            def wrapper(real_func):
+                return Callback(real_func, parent=cls, data=kwargs)
+            return wrapper
+        else:
+            raise ValueError("Only keyword arguments are allowed")
 
     @staticmethod
     def register_delayed(func, *args, **kwargs):
@@ -422,7 +429,7 @@ class Callback(object):
     :ivar Script parent: The parent class that will handle the response from callback.
     :ivar str path: The route path to function.
     """
-    __slots__ = ("parent", "func", "path", "is_playable", "is_folder")
+    __slots__ = ("parent", "func", "path", "is_playable", "is_folder", "data")
 
     def __getstate__(self):
         return self.path
@@ -435,10 +442,7 @@ class Callback(object):
         self.func = obj.func
         self.path = obj.path
 
-    def __eq__(self, other):
-        return self.path == other.path
-
-    def __init__(self, callback, parent):
+    def __init__(self, callback, parent, data):
         # Construct route path
         path = callback.__name__.lower()
         if path != "root":
@@ -450,6 +454,10 @@ class Callback(object):
         self.parent = parent
         self.func = callback
         self.path = path
+        self.data = data
+
+    def __eq__(self, other):
+        return self.path == other.path
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)

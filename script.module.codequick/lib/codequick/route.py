@@ -159,23 +159,25 @@ class Route(support.Base):
 
     def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
         super(Route, self).__init__()
-        with Cache("cache.sqlite") as cache:
+        cache_ttl = callback.data.get("cache_ttl", 60 * 4)  # Defaults to 4 hours
+
+        with Cache("cache.sqlite", cache_ttl*60) as cache:  # cache_ttl is converted to seconds
             # Check if results of callback are cached and return so,
             # else execute the callback and cache the results.
-            try:
-                session_data = cache.get_cache(support.session_id)
+            if support.session_id in cache:
                 logger.info("Cache Hit: %s", support.session_id)
-            except KeyError:
+                session_data = cache[support.session_id]
+            else:
                 logger.info("Cache Miss: %s", support.session_id)
                 self.update_listing = self.params.get(u"_updatelisting_", False)
                 self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
                 self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)
-                self.cache_ttl = 60 * 4  # 4 hours
                 self._manual_sort = list()
                 self.content_type = _UNSET
                 self.autosort = True
 
-                # Execute callback
+                # Execute the callback
+                self.__dict__.update(callback.data)
                 results = callback(self, **callback_params)
                 raw_listitems = validate_listitems(results)
 
@@ -186,7 +188,9 @@ class Route(support.Base):
                 else:
                     # Process the results and send results to kodi
                     session_data = self._process_results(raw_listitems)
-                    cache.set_cache(support.session_id, session_data, self.cache_ttl*60)
+                    if cache_ttl != -1:
+                        # Convert cache_ttl from minutes to seconds
+                        cache[support.session_id] = session_data
 
             # Send session data to kodi
             send_to_kodi(support.handle, session_data)
