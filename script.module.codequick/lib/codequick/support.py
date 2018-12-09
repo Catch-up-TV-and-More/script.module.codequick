@@ -185,7 +185,7 @@ class Base(object):
             >>> def root(_):
             >>>     yield Listitem.from_dict("Extra videos", subfolder)
             >>>
-            >>> @Route.register(cache_ttl=False, content_type="videos")
+            >>> @Route.register(cache_ttl=240, content_type="videos")
             >>> def subfolder(_):
             >>>     yield Listitem.from_dict("Play video",
                     "http://www.example.com/video1.mkv")
