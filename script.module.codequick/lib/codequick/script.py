@@ -13,7 +13,7 @@ class Script(support.Base):
     that just execute code and return nothing.
 
     This class is also used as the base for all other types of callbacks i.e.
-    :class:`codequick.Route<codequick.route.Route>` and :class:`codequick.Resolver<codequick.resolver.Resolver>`.
+    :class:`codequick.Route` and :class:`codequick.Resolver`.
     """
     def __init__(self, callback, callback_params):
         super(Script, self).__init__()

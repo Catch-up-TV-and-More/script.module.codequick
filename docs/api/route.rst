@@ -2,8 +2,15 @@ Route
 =====
 This module is used for the creation of “Route callbacks”.
 
-.. autoclass:: codequick.route.Route
+.. autoclass:: codequick.Route()
     :members: add_sort_methods
+
+    .. attribute:: cache_ttl
+        :annotation: = -1
+
+        The time in minutes that the cache will be valid for, Value of -1 disables cacheing.
+
+        .. note::  This parameter can only be set when registering a callback, see :meth:`codequick.Script.register`
 
     .. attribute:: autosort
         :annotation: = True
@@ -16,6 +23,11 @@ This module is used for the creation of “Route callbacks”.
         :annotation: = False
 
         When set to ``True``, the current page of listitems will be updated, instead of creating a new page of listitems.
+
+    .. attribute:: category
+        :annotation: = ""
+
+        The category name of the current list, defaults to the title of previously selected listitem.
 
     .. attribute:: content_type
         :annotation: = None

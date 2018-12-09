@@ -539,25 +539,25 @@ class Listitem(object):
         self.info = Info()
         """
         Dictionary like object for adding "infoLabels".
-        See :class:`listing.Info<codequick.listing.Info>` for more details.
+        See :class:`Info<codequick.listing.Info>` for more details.
         """
 
         self.art = Art()
         """
         Dictionary like object for adding "listitem art".
-        See :class:`listing.Art<codequick.listing.Art>` for more details.
+        See :class:`Art<codequick.listing.Art>` for more details.
         """
 
         self.stream = Stream()
         """
         Dictionary like object for adding "stream details".
-        See :class:`listing.Stream<codequick.listing.Stream>` for more details.
+        See :class:`Stream<codequick.listing.Stream>` for more details.
         """
 
         self.context = Context()
         """
         List object for "context menu" items.
-        See :class:`listing.Context<codequick.listing.Context>` for more details.
+        See :class:`Context<codequick.listing.Context>` for more details.
         """
 
         self.params = Params()

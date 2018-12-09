@@ -127,14 +127,14 @@ def send_to_kodi(handle, session_data):  # type: (int, dict) -> None
 
 class Route(support.Base):
     """
+    Route inherits all methods and attributes from :class:`codequick.Script`.
+
     This class is used to create "Route" callbacks. “Route" callbacks, are callbacks that
     return "listitems" which will show up as folders in Kodi.
 
-    Route inherits all methods and attributes from :class:`codequick.Script<codequick.script.Script>`.
-
     The possible return types from Route Callbacks are.
-        * ``iterable``: "List" or "tuple", consisting of :class:`codequick.listitem<codequick.listing.Listitem>` objects.
-        * ``generator``: A Python "generator" that return's :class:`codequick.listitem<codequick.listing.Listitem>` objects.
+        * ``iterable``: "List" or "tuple", consisting of :class:`codequick.Listitem<codequick.listing.Listitem>` objects.
+        * ``generator``: A Python "generator" that return's :class:`codequick.Listitem<codequick.listing.Listitem>` objects.
         * ``False``: This will cause the "plugin call" to quit silently, without raising a RuntimeError.
 
     :raises RuntimeError: If no content was returned from callback.
@@ -159,7 +159,7 @@ class Route(support.Base):
 
     def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
         super(Route, self).__init__()
-        cache_ttl = callback.data.get("cache_ttl", 60 * 4)  # Defaults to 4 hours
+        cache_ttl = callback.data.get("cache_ttl", -1)
 
         with Cache("cache.sqlite", cache_ttl*60) as cache:  # cache_ttl is converted to seconds
             # Check if results of callback are cached and return so,

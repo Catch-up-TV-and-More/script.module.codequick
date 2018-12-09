@@ -58,10 +58,10 @@ $"""
 
 class Resolver(support.Base):
     """
+    Resolver inherits all methods and attributes from :class:`codequick.Script`.
+
     This class is used to create "Resolver" callbacks. Resolver callbacks are callbacks that
     return playable video URL's which Kodi can play.
-
-    Resolver inherits all methods and attributes from :class:`script.Script<codequick.script.Script>`.
 
     The possible return types from Resolver Callbacks are.
         * ``bytes``: URL as type "bytes".

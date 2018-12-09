@@ -69,7 +69,11 @@ class Settings(object):
         addon_data.setSetting(key, ensure_unicode(value))
 
     def __delitem__(self, key):  # type: (str) -> None
-        """Set an add-on setting to a blank string."""
+        """
+        Set an add-on setting to a blank string.
+
+        :param str key: ID of the setting to delete.
+        """
         addon_data.setSetting(key, "")
 
     @staticmethod
@@ -138,45 +142,27 @@ class Settings(object):
 
 
 class Base(object):
-    """
-    This class is used to create "Script" callbacks. Script callbacks are callbacks
-    that just execute code and return nothing.
-
-    This class is also used as the base for all other types of callbacks i.e.
-    :class:`codequick.Route<codequick.route.Route>` and :class:`codequick.Resolver<codequick.resolver.Resolver>`.
-    """
-    # Set the listitem types to that of a script
+    """Base class for all calback type."""
     is_playable = False
     is_folder = False
 
-    #: Critical logging level, maps to "xbmc.LOGFATAL".
     CRITICAL = logging.CRITICAL
-    #: Critical logging level, maps to "xbmc.LOGWARNING".
     WARNING = logging.WARNING
-    #: Critical logging level, maps to "xbmc.LOGERROR".
     ERROR = logging.ERROR
-    #: Critical logging level, maps to "xbmc.LOGDEBUG".
     DEBUG = logging.DEBUG
-    #: Critical logging level, maps to "xbmc.LOGNOTICE".
     INFO = logging.INFO
 
-    #: Kodi notification warning image.
     NOTIFY_WARNING = 'warning'
-    #: Kodi notification error image.
     NOTIFY_ERROR = 'error'
-    #: Kodi notification info image.
     NOTIFY_INFO = 'info'
 
+    # Dictionary like interface of "add-on" settings.
     setting = Settings()
-    """
-    Dictionary like interface of "add-on" settings.
-    See :class:`script.Settings<codequick.script.Settings>` for more details.
-    """
 
-    #: Underlining logger object, for advanced use. See :class:`logging.Logger` for more details.
+    # Underlining logger object, for advanced use. See :class:`logging.Logger` for more details.
     logger = addon_logger
 
-    #: Dictionary of all callback parameters, for advanced use.
+    # Dictionary of all callback parameters, for advanced use.
     params = params
 
     def __init__(self):
@@ -187,6 +173,22 @@ class Base(object):
     def register(cls, func=None, **kwargs):
         """
         Decorator used to register callback functions.
+
+        Can be called with or without arguments. If arguments are given, they have to be "keyword only" arguments.
+        The keyword arguments are parameters that are used by the plugin class instance.
+        e.g. autosort=False to disable auto sorting for Route callbacks
+
+        :example:
+            >>> from codequick import Route, Listitem
+            >>>
+            >>> @Route.register
+            >>> def root(_):
+            >>>     yield Listitem.from_dict("Extra videos", subfolder)
+            >>>
+            >>> @Route.register(cache_ttl=False, content_type="videos")
+            >>> def subfolder(_):
+            >>>     yield Listitem.from_dict("Play video",
+                    "http://www.example.com/video1.mkv")
 
         :param function func: The callback function to register.
         :returns: A callback instance.
@@ -205,7 +207,7 @@ class Base(object):
     def register_delayed(func, *args, **kwargs):
         """
         Registers a function that will be executed after Kodi has finished listing all "listitems".
-        Since this function is called after the listitems has been shown, it will not slow down the
+        Since this function is called after the listitems have been shown, it will not slow down the
         listing of content. This is very useful for fetching extra metadata for later use.
 
         .. note::
@@ -231,12 +233,12 @@ class Base(object):
             * :attr:`Script.ERROR<codequick.script.Script.ERROR>`
             * :attr:`Script.CRITICAL<codequick.script.Script.CRITICAL>`
 
-        :param str msg: The message format string.
+        :param msg: The message format string.
         :type args: list or tuple
         :param args: List of arguments which are merged into msg using the string formatting operator.
         :param int lvl: The logging level to use. default => 10 (Debug).
 
-        .. Note::
+        .. note::
 
             When a log level of 50(CRITICAL) is given, all debug messages that were previously logged will
             now be logged as level 30(WARNING). This allows for debug messages to show in the normal Kodi
