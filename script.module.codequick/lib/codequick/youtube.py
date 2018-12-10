@@ -30,9 +30,10 @@ EXCEPTED_STATUS = [u"public", u"unlisted"]
 
 class Database(object):
     def __init__(self):
-        # Unfortunately with python 3, sqlite3.connect might fail if system local is 'c_type'(ascii)
-        self.db = db = sqlite3.connect(CACHEFILE, timeout=10)
+        self._connect()
 
+    def _connect(self):
+        self.db = db = sqlite3.connect(CACHEFILE, timeout=10)
         db.isolation_level = None
         db.row_factory = sqlite3.Row
         self.cur = cur = db.cursor()
@@ -44,23 +45,37 @@ class Database(object):
 
         # Create missing channel table
         cur.execute("""CREATE TABLE IF NOT EXISTS channels
-                    (channel_id TEXT PRIMARY KEY, uploads_id TEXT, fanart TEXT, channel_title TEXT)""")
+                            (channel_id TEXT PRIMARY KEY, uploads_id TEXT, fanart TEXT, channel_title TEXT)""")
 
         # Create missing category table
         cur.execute("""CREATE TABLE IF NOT EXISTS categories
-                    (id INT PRIMARY KEY, genre TEXT)""")
+                            (id INT PRIMARY KEY, genre TEXT)""")
 
         # Create missing video table
         cur.execute("""CREATE TABLE IF NOT EXISTS videos
-                    (video_id TEXT PRIMARY KEY, title TEXT, thumb TEXT, description TEXT, genre_id INT,
-                    count INT, date TEXT, hd INT, duration INT, channel_id TEXT,
-                    FOREIGN KEY(channel_id) REFERENCES channels(channel_id),
-                    FOREIGN KEY(genre_id) REFERENCES categories(id))""")
+                            (video_id TEXT PRIMARY KEY, title TEXT, thumb TEXT, description TEXT, genre_id INT,
+                            count INT, date TEXT, hd INT, duration INT, channel_id TEXT,
+                            FOREIGN KEY(channel_id) REFERENCES channels(channel_id),
+                            FOREIGN KEY(genre_id) REFERENCES categories(id))""")
 
-    def execute(self, execute_obj, sqlquery, args=""):
+    def execute(self, execute_obj, sqlquery, args="", repeat=False):
         self.cur.execute("BEGIN")
         try:
             execute_obj(sqlquery, args)
+
+        # Handle database errors
+        except sqlite3.DatabaseError as e:
+            # Check if database is currupted
+            if not repeat and os.path.exists(CACHEFILE) and \
+                    (str(e).find("file is encrypted") > -1 or str(e).find("not a database") > -1):
+                logger.error("Deleting broken database file: %s", CACHEFILE)
+                self.close()
+                os.remove(CACHEFILE)
+                self._connect()
+                self.execute(execute_obj, sqlquery, args, repeat=True)
+            else:
+                raise e
+
         except Exception as e:  # pragma: no cover
             self.db.rollback()
             raise e

@@ -252,22 +252,41 @@ class Cache(object):
     .. note:: Any expired cache item will be removed on first access to that item.
     """
     def __init__(self, name, ttl):
-        filepath = check_filename(name)
-        self.db = db = sqlite3.connect(filepath, timeout=1)
-        self.cur = cur = db.cursor()
-        db.isolation_level = None
+        self.filepath = check_filename(name)
         self.buffer = {}
         self.ttl = ttl
+        self._connect()
+
+    def _connect(self):
+        """Connect to sqlite cache database"""
+        self.db = db = sqlite3.connect(self.filepath, timeout=3)
+        self.cur = cur = db.cursor()
+        db.isolation_level = None
 
         # Create cache table
         cur.execute("CREATE TABLE IF NOT EXISTS itemcache (key TEXT PRIMARY KEY, value BLOB, timestamp INTEGER)")
         db.commit()
 
-    def execute(self, sqlquery, args):
+    def execute(self, sqlquery, args, repeat=False):  # type: (str, tuple, bool) -> None
         self.cur.execute("BEGIN")
         try:
             self.cur.execute(sqlquery, args)
-        except sqlite3.Error as e:  # pragma: no cover
+
+        # Handle database errors
+        except sqlite3.DatabaseError as e:
+            # Check if database is currupted
+            if not repeat and os.path.exists(self.filepath) and \
+                    (str(e).find("file is encrypted") > -1 or str(e).find("not a database") > -1):
+                Base.log("Deleting broken database file: %s", (self.filepath,), lvl=Base.DEBUG)
+                self.close()
+                os.remove(self.filepath)
+                self._connect()
+                self.execute(sqlquery, args, repeat=True)
+            else:
+                raise e
+
+        # Just roll back database on error and raise again
+        except Exception as e:
             self.db.rollback()
             raise e
         else:
@@ -312,5 +331,4 @@ class Cache(object):
         self.close()
 
     def close(self):
-        self.cur.close()
         self.db.close()
