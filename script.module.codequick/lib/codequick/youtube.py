@@ -150,7 +150,7 @@ class API(object):
 
         :raises RuntimeError: If youtube returns a error response.
         """
-        source = self.req_session.get(url, params=query)
+        source = self.req_session.get(url, params=query, max_age=0)
         response = json.loads(source.content, encoding=source.encoding)
         if u"error" not in response:  # pragma: no branch
             return response
@@ -565,7 +565,7 @@ class APIControl(object):
         return duration
 
 
-@Route.register
+@Route.register(cache_ttl=480)
 def playlists(plugin, channel_id, show_all=True, pagetoken=None, loop=False):
     """
     List all playlist for giving channel
@@ -633,7 +633,7 @@ def playlists(plugin, channel_id, show_all=True, pagetoken=None, loop=False):
         yield item
 
 
-@Route.register
+@Route.register(cache_ttl=240)
 def playlist(plugin, contentid, pagetoken=None, enable_playlists=True, loop=False):
     """
     List all video within youtube playlist
@@ -684,7 +684,7 @@ def playlist(plugin, contentid, pagetoken=None, enable_playlists=True, loop=Fals
     return results
 
 
-@Route.register
+@Route.register(cache_ttl=480)
 def related(plugin, video_id, pagetoken=None):
     """
     Search for all videos related to a giving video id.

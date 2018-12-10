@@ -165,10 +165,10 @@ class Route(support.Base):
             # Check if results of callback are cached and return so,
             # else execute the callback and cache the results.
             if support.session_id in cache:
-                logger.info("Cache Hit: %s", support.session_id)
+                logger.debug("Cache Hit: %s", support.session_id)
                 session_data = cache[support.session_id]
             else:
-                logger.info("Cache Miss: %s", support.session_id)
+                logger.debug("Cache Miss: %s", support.session_id)
                 self.update_listing = self.params.get(u"_updatelisting_", False)
                 self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
                 self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)

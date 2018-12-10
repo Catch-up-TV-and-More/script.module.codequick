@@ -654,7 +654,7 @@ def run():
         logger.critical(msg, exc_info=1)
 
     else:
-        logger.info("Route Execution Time: %ims", (time.time() - execute_time) * 1000)
+        logger.debug("Route Execution Time: %ims", (time.time() - execute_time) * 1000)
         run_delayed()
 
 

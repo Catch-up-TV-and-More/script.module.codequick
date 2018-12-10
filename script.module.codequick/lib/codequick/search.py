@@ -139,7 +139,7 @@ def list_terms(searchdb, plugin, extras):
         yield item
 
 
-@Route.register
+@Route.register(cache_ttl=-1)
 def saved_searches(plugin, remove_entry=None, search=False, first_load=False, **extras):
     """
     Callback used to list all saved searches for the addon that called it.
