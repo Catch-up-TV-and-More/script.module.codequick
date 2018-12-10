@@ -267,7 +267,7 @@ class Cache(object):
         self.cur.execute("BEGIN")
         try:
             self.cur.execute(sqlquery, args)
-        except Exception as e:  # pragma: no cover
+        except sqlite3.Error as e:  # pragma: no cover
             self.db.rollback()
             raise e
         else:
