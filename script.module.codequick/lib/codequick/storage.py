@@ -301,7 +301,7 @@ class Cache(object):
                 raise KeyError(key)
             else:
                 value, timestamp = item
-                if timestamp + self.ttl < time.time():  # Expired
+                if self.ttl > -1 and timestamp + self.ttl < time.time():  # Expired
                     del self[key]
                     raise KeyError(key)
                 else:
