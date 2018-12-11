@@ -7,11 +7,11 @@ This module is used for the creation of “Route callbacks”.
     .. attribute:: cache_ttl
         :annotation: = 0
 
-        The cache time to live value when using route caching
+        The time to live value of the cache when using route caching.
 
-        Value of -1 will force cache to be always fresh.
-        Value of 0 will disable the cache.
-        Value greater than 0 is the time in minutes that the cache will be valid for.
+            * Value of -1 will force cache to be always fresh.
+            * Value of 0 will disable the cache.
+            * Value greater than 0 is the time in minutes that the cache will be valid for.
 
         Caching is disabled by default, unless a cache_ttl value greater than 0 is set.
         But this may change in the future.
