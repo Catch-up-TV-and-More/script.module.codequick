@@ -251,7 +251,7 @@ class Base(object):
         """
         lvl = kwargs.get("lvl", 10)
 
-        if msg:
+        if args:
             addon_logger.log(lvl, msg, *(args[0] if isinstance(args[0], (tuple, list)) else msg))
         else:
             addon_logger.log(lvl, msg)
