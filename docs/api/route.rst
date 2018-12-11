@@ -5,14 +5,18 @@ This module is used for the creation of “Route callbacks”.
 .. autoclass:: codequick.Route()
 
     .. attribute:: cache_ttl
-        :annotation: = -1
+        :annotation: = 0
 
-        The time in minutes that the cache will be valid for, Value of -1 disables cacheing.
+        The cache time to live value when using route caching
 
-        By default, cacheing is disabled unless a cache_ttl value greater than 0 is set.
+        Value of -1 will force cache to be always fresh.
+        Value of 0 will disable the cache.
+        Value greater than 0 is the time in minutes that the cache will be valid for.
+
+        Caching is disabled by default, unless a cache_ttl value greater than 0 is set.
         But this may change in the future.
 
-        .. note::  This parameter can only be set when registering a callback, See :meth:`codequick.Script.register`
+        .. note::  This parameter can only be set when registering a Route callback, See :meth:`codequick.Script.register`
 
     .. attribute:: sort_methods
         :annotation: = []

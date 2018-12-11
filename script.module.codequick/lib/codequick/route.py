@@ -161,23 +161,26 @@ class Route(support.Base):
         super(Route, self).__init__()
         cache_ttl = callback.data.get("cache_ttl", -1)
 
-        with Cache("cache.sqlite", cache_ttl*60) as cache:  # cache_ttl is converted to seconds
-            # Check if results of callback are cached and return so,
-            # else execute the callback and cache the results.
-            if support.session_id in cache:
-                logger.debug("Cache Hit: %s", support.session_id)
-                session_data = cache[support.session_id]
-            else:
-                logger.debug("Cache Miss: %s", support.session_id)
-                self.update_listing = self.params.get(u"_updatelisting_", False)
-                self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
-                self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)
-                self.sort_methods = []
-                self.content_type = _UNSET
-                self.autosort = True
+        # Connect to cache db and pass cache_ttl in seconds
+        cache = Cache("cache.sqlite", cache_ttl*60) if cache_ttl != 0 else False
 
+        # Check if results of callback are cached and return so,
+        # else execute the callback and cache the results.
+        if cache and support.session_id in cache:
+            logger.debug("Cache Hit: %s", support.session_id)
+            session_data = cache[support.session_id]
+        else:
+            logger.debug("Cache Miss: %s", support.session_id)
+            self.update_listing = self.params.get(u"_updatelisting_", False)
+            self.category = re.sub(u"\(\d+\)$", u"", self._title).strip()
+            self.cache_to_disc = self.params.get(u"_cache_to_disc_", True)
+            self.sort_methods = []
+            self.content_type = _UNSET
+            self.autosort = True
+            self.__dict__.update(callback.data)
+
+            try:
                 # Execute the callback
-                self.__dict__.update(callback.data)
                 results = callback(self, **callback_params)
                 raw_listitems = validate_listitems(results)
 
@@ -188,12 +191,14 @@ class Route(support.Base):
                 else:
                     # Process the results and send results to kodi
                     session_data = self._process_results(raw_listitems)
-                    if cache_ttl != -1:
+                    if cache:
                         # Convert cache_ttl from minutes to seconds
                         cache[support.session_id] = session_data
+            finally:
+                cache.close()
 
-            # Send session data to kodi
-            send_to_kodi(support.handle, session_data)
+        # Send session data to kodi
+        send_to_kodi(support.handle, session_data)
 
     def add_sort_methods(self, *methods, **kwargs):  # Undocumented
         """
