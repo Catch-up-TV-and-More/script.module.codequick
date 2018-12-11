@@ -223,7 +223,7 @@ class Base(object):
         registered_delayed.append(callback)
 
     @staticmethod
-    def log(msg, args=None, lvl=10):
+    def log(msg, *args, **kwargs):
         """
         Logs a message with logging level of "lvl".
 
@@ -235,18 +235,24 @@ class Base(object):
             * :attr:`Script.CRITICAL<codequick.script.Script.CRITICAL>`
 
         :param msg: The message format string.
-        :type args: list or tuple
         :param args: List of arguments which are merged into msg using the string formatting operator.
-        :param int lvl: The logging level to use. default => 10 (Debug).
+        :param lvl: Keyword only argument for the logging level to use. default => 10 (Debug).
 
         .. note::
 
             When a log level of 50(CRITICAL) is given, all debug messages that were previously logged will
             now be logged as level 30(WARNING). This allows for debug messages to show in the normal Kodi
             log file when a CRITICAL error has occurred, without having to enable Kodi's debug mode.
+
+        :example:
+            >>> Script.log("One %s three %s", "two", "four")
+            >>> Script.log("One %s three %s", ("two", "four"))
+            >>> Script.log("Download failed", lvl=Script.ERROR)
         """
-        if args:
-            addon_logger.log(lvl, msg, *args)
+        lvl = kwargs.get("lvl", 10)
+
+        if msg:
+            addon_logger.log(lvl, msg, *(args[0] if isinstance(args[0], (tuple, list)) else msg))
         else:
             addon_logger.log(lvl, msg)
 
