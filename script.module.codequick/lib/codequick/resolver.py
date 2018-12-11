@@ -98,7 +98,7 @@ class Resolver(support.Base):
         self.playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 
         # Handle execution of resolver callback.
-        results = callback.func(self, **callback_params)
+        results = callback(self, **callback_params)
         self._process_results(results)
 
     def create_loopback(self, url, **next_params):  # Undocumented
