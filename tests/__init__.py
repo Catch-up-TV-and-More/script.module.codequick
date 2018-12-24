@@ -1,5 +1,6 @@
-from addondev import initializer
-import os
+from addondev import initializer as _initializer
+import os as _os
 
 # Initialize mock kodi environment
-initializer(os.path.join(os.path.dirname(os.path.dirname(__file__)), "script.module.codequick"))
+addon_path = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "script.module.codequick")
+_initializer(addon_path)
