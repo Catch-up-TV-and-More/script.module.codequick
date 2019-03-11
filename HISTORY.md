@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for class callbacks.
 
 
+## [0.9.8] - 2019-03-11
+### Fixed
+- Dailymotion videos not working when using extract_source.
+
+
 ## [0.9.7] - 2018-11-30
 ### Changed
 - Related menu now shows "Related videos" as the category.
