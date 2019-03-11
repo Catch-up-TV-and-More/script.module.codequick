@@ -15,6 +15,5 @@ class Script(support.Base):
     This class is also used as the base for all other types of callbacks i.e.
     :class:`codequick.Route` and :class:`codequick.Resolver`.
     """
-    def __init__(self, callback, callback_params):
-        super(Script, self).__init__()
-        callback.func(self, **callback_params)
+    def execute(self, callback, callback_params):
+        callback(self, **callback_params)

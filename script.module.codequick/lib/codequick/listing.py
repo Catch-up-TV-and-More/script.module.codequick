@@ -81,7 +81,7 @@ auto_sort_add = support.auto_sort.add
 quality_map = ((768, 576), (1280, 720), (1920, 1080), (3840, 2160))  # SD, 720p, 1080p, 4K
 
 # Re.sub to remove formatting from label strings
-strip_formatting = re.compile("\[[^\]]+?\]").sub
+strip_formatting = re.compile(r"\[[^\]]+?\]").sub
 
 # Localized string Constants
 RELATED_VIDEOS = 32201
@@ -304,10 +304,10 @@ class Info(Params):
     def _duration(duration):
         """Converts duration from a string of 'hh:mm:ss' into seconds."""
         if isinstance(duration, (str, unicode_type)):
-            duration = duration.strip(";").strip(":")
-            if ":" in duration or ";" in duration:
+            duration = duration.replace(";", ":").strip(":")
+            if ":" in duration:
                 # Split Time By Marker and Convert to Integer
-                time_parts = duration.replace(";", ":").split(":")
+                time_parts = duration.split(":")
                 time_parts.reverse()
                 duration = 0
                 counter = 1

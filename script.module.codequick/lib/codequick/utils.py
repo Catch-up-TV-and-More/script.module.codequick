@@ -15,8 +15,6 @@ except ImportError:
     import urlparse
 
 PY3 = sys.version_info[0] >= 3
-
-# Unicode Type object, unicode on python2 or str on python3
 unicode_type = type(u"")
 
 string_map = {}
@@ -100,7 +98,7 @@ def parse_qs(qs, keep_blank_values=False, strict_parsing=False):
     parsed = urlparse.parse_qsl(qs.split("?", 1)[-1], keep_blank_values, strict_parsing)
     if PY3:
         for key, value in parsed:
-            if key not in params:
+            if key not in params or not strict_parsing:
                 params[key] = value
             else:
                 # Only add keys that are not already added, multiple values are not supported
@@ -108,7 +106,7 @@ def parse_qs(qs, keep_blank_values=False, strict_parsing=False):
     else:
         for bkey, value in parsed:
             ukey = bkey.decode("utf8")
-            if ukey not in params:
+            if ukey not in params or not strict_parsing:
                 params[ukey] = value.decode("utf8")
             else:
                 # Only add keys that are not already added, multiple values are not supported

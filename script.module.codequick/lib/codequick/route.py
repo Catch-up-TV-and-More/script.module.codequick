@@ -157,8 +157,7 @@ class Route(support.Base):
     # Change listitem type to 'folder'
     is_folder = True
 
-    def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
-        super(Route, self).__init__()
+    def execute(self, callback, callback_params):
         cache_ttl = callback.data.get("cache_ttl", -1)
 
         # Connect to cache db and pass cache_ttl in seconds

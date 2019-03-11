@@ -93,10 +93,11 @@ class Resolver(support.Base):
     # Change listitem type to 'player'
     is_playable = True
 
-    def __init__(self, callback, callback_params):  # type: (support.Callback, dict) -> None
+    def __init__(self):
         super(Resolver, self).__init__()
         self.playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
 
+    def execute(self, callback, callback_params):
         # Handle execution of resolver callback.
         results = callback(self, **callback_params)
         self._process_results(results)

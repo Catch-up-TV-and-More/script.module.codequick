@@ -445,9 +445,10 @@ class Callback(object):
 
     def __setstate__(self, state):
         obj = registered_routes[state]
+        self.parent = obj.parent
         self.is_playable = obj.is_playable
         self.is_folder = obj.is_folder
-        self.parent = obj.parent
+        self.data = obj.data
         self.func = obj.func
         self.path = obj.path
 
@@ -508,7 +509,7 @@ class Callback(object):
 
         # Update global params with the positional args
         if args:
-            self.args_to_kwargs(args, params)
+            self.args_to_kwargs(args, kwargs)
 
         # Update global params with keyword args
         if kwargs:
@@ -519,7 +520,7 @@ class Callback(object):
 
         try:
             # Now we are ready to call the callback function that we want to test
-            results = self.func(parent_ins, *args, **kwargs)
+            results = self.func(parent_ins, **kwargs)
 
             # Ensure the we always have a list to work with
             if inspect.isgenerator(results):
@@ -643,7 +644,8 @@ def run():
 
         # Execute callback
         execute_time = time.time()
-        route.parent(route, callback_params)
+        parent = route.parent()
+        parent.execute(route, callback_params)
 
     except Exception as e:
         try:
