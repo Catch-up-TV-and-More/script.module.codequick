@@ -144,12 +144,26 @@ class Params(MutableMapping):
     def __repr__(self):
         return "%s(%r)" % (self.__class__, self.raw_dict)
 
+    def clean(self):
+        """Remove any and all None values from the dictionary."""
+        for key in [key for key, val in self.raw_dict.items() if val is None]:
+            del self.raw_dict[key]
+
 
 class Art(Params):
     """
     Dictionary like object, that allows you to add various images. e.g. "thumb", "fanart".
 
-    This class inherits all methods and attributes from :class:`collections.MutableMapping`.
+    if "thumbnail", "fanart" or "icon"  is not set, then they will be set automaticly based on the add-on's
+    fanart and icon images.
+
+    .. note::
+
+        The automatic image values can be disabled by setting them to None. e.g. item.art["thumbnail"] = None.
+
+    .. note::
+
+        This class inherits all methods and attributes from :class:`collections.MutableMapping`.
 
     Expected art values are.
         * thumb
@@ -168,10 +182,7 @@ class Art(Params):
         >>> item.art.local_thumb("thumbnail.png")
     """
     def __setitem__(self, key, value):  # type: (str, str) -> None
-        if value:
-            self.raw_dict[key] = ensure_native_str(value)
-        else:
-            logger.debug("Ignoring empty art value: '%s'", key)
+        self.raw_dict[key] = ensure_native_str(value)
 
     def local_thumb(self, image):
         """
@@ -208,6 +219,7 @@ class Art(Params):
         if "icon" not in self.raw_dict:  # pragma: no branch
             self.raw_dict["icon"] = "DefaultFolder.png" if isfolder else "DefaultVideo.png"
 
+        self.clean()  # Remove all None values
         listitem.setArt(self.raw_dict)
 
 
@@ -527,6 +539,8 @@ class Listitem(object):
 
     def __init__(self, content_type="video"):
         self._content_type = content_type
+        self.is_playable = True
+        self.is_folder = False
         self._args = None
         self.path = ""
 
@@ -605,34 +619,47 @@ class Listitem(object):
         """
         Set the "callback" object.
 
-        The "callback" object can be any registered :class:`codequick.Script<codequick.script.Script>`,
-        :class:`codequick.Route<codequick.route.Route>` or :class:`codequick.Resolver<codequick.resolver.Resolver>`
-        callback, or playable URL.
+        The "callback" object can be any of the following:
+            * :class:`codequick.Script<codequick.script.Script>` callback.
+            * :class:`codequick.Route<codequick.route.Route>` callback.
+            * :class:`codequick.Resolver<codequick.resolver.Resolver>` callback.
+            * Any kodi path, e.g. "plugin://" or "script://"
+            * Directly playable URL.
 
-        :type callback: str or Callback
+        .. note::
+
+            By default kodi plugin / script paths are treated as playable items.
+            To override this behavior, you can pass in the ``is_playable`` and ``is_folder`` parameters.
+            If only ``is_folder`` is given, then ``is_playable`` will default to ``not is_folder``.
+
         :param callback: The "callback" or playable URL.
         :param args: "Positional" arguments that will be passed to the callback.
         :param kwargs: "Keyword" arguments that will be passed to the callback.
         """
+        self.is_folder = is_folder = kwargs.pop("is_folder", self.is_folder)
+        self.is_playable = kwargs.pop("is_playable", not is_folder)
         self.path = callback
         self._args = args
         if kwargs:
             self.params.update(kwargs)
 
     # noinspection PyProtectedMember
-    def build(self):
-        callback = self.path
+    def _close(self):
+        path = self.path
         listitem = self.listitem
-        if isinstance(callback, support.Callback):
-            listitem.setProperty("isplayable", str(callback.is_playable).lower())
-            listitem.setProperty("folder", str(callback.is_folder).lower())
-            path = support.build_path(callback, self._args, self.params.raw_dict)
-            isfolder = callback.is_folder
-        else:
-            listitem.setProperty("isplayable", "true" if callback else "false")
+        if isinstance(path, support.Callback):
+            isfolder = path.is_folder
+            listitem.setProperty("isplayable", str(path.is_playable).lower())
+            listitem.setProperty("folder", str(path.is_folder).lower())
+            path = support.build_path(path, self._args, self.params.raw_dict)
+        elif not path:
+            listitem.setProperty("isplayable", "false")
             listitem.setProperty("folder", "false")
             isfolder = False
-            path = callback
+        else:
+            listitem.setProperty("isplayable", str(self.is_playable).lower())
+            listitem.setProperty("folder", str(self.is_folder).lower())
+            isfolder = self.is_folder
 
         if not isfolder:
             # Add mediatype if not already set
