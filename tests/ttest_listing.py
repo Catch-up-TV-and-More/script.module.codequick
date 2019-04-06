@@ -66,6 +66,8 @@ class Art(Params):
 
     def test_empty_setter(self):
         self.base["test"] = ""
+        self.assertIn("test", self.base)
+        self.base.clean()
         self.assertNotIn("test", self.base)
 
     def test_local_thumb(self):
@@ -88,11 +90,13 @@ class Art(Params):
 
     def test_close_with_extras(self):
         listing.fanart = "fanart"
-        self.base["fanart"] = ""
         self.base["thumb"] = ""
         self.base["icon"] = ""
         self.base._close(self.listitem, False)
         self.assertIn("thumb", self.base)
+        self.base._close(self.listitem, False)
+        self.assertNotIn("icon", self.base)
+        self.assertNotIn("thumb", self.base)
         self.assertIn("fanart", self.base)
 
 
