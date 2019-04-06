@@ -639,8 +639,8 @@ class Listitem(object):
         """
         self.is_folder = is_folder = kwargs.pop("is_folder", self.is_folder)
         self.is_playable = kwargs.pop("is_playable", not is_folder)
-        if callback in dispatcher.registered_routes:
-            callback = dispatcher.registered_routes[callback].callback
+        if callback in support.registered_routes:
+            callback = support.registered_routes[callback].callback
 
         self.path = callback
         self._args = args
